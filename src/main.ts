@@ -16,6 +16,8 @@ import { bindInputs, setLoadSampleHook, syncInputs } from './ui/sidepanel';
 import { bindProjectIO, bindTabs, loadSample, refresh, restoreOrSample } from './ui/app';
 import { buildToolbar, setTool } from './ui/toolbar';
 import { loadOverrides, setupEditor } from './ui/equipment-editor';
+import { startUpdateChecker } from './ui/update-checker';
+import { APP_VERSION } from './core/version';
 
 events.refresh = refresh;
 events.draw = draw;
@@ -49,6 +51,9 @@ async function init(): Promise<void> {
     restoreOrSample();
     refresh();
     draw();
+    const badge = document.getElementById('appVersion');
+    if (badge) badge.textContent = 'v' + APP_VERSION;
+    startUpdateChecker();
   } catch (err) {
     console.error(err);
     toast('Ошибка инициализации');

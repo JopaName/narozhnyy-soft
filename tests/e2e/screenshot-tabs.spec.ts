@@ -1,6 +1,4 @@
 import { test } from '@playwright/test';
-import * as fs from 'fs';
-import { PNG } from 'pngjs';
 
 test('screenshot all tabs', async ({ page }) => {
   await page.goto('https://jopaname.github.io/narozhnyy-soft/');
