@@ -40,6 +40,7 @@
   <img src="docs/screenshots/3-energy.png" width="45%" alt="Выработка">
   <img src="docs/screenshots/4-finance.png" width="45%" alt="Финансы">
   <img src="docs/screenshots/5-proposal.png" width="45%" alt="КП">
+  <img src="docs/screenshots/6-projects.png" width="45%" alt="Проекты">
 </div>
 
 ## 📥 Установка на Android

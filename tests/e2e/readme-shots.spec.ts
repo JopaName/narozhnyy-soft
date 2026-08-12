@@ -29,4 +29,11 @@ test('readme screenshots', async ({ page }) => {
   await page.locator('[data-tab="proposal"]').click();
   await page.waitForTimeout(800);
   await page.screenshot({ path: 'docs/screenshots/5-proposal.png' });
+
+  /* Проекты (модалка) */
+  await page.locator('[data-tab="scheme"]').click();
+  await page.waitForTimeout(400);
+  await page.locator('#btnProjects').click();
+  await page.waitForTimeout(500);
+  await page.screenshot({ path: 'docs/screenshots/6-projects.png' });
 });
