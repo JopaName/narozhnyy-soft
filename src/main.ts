@@ -21,6 +21,8 @@ import { APP_VERSION } from './core/version';
 import { setupProjects } from './ui/projects';
 import { setupBg } from './ui/bg';
 import { state } from './core/state';
+import { setupVariants, setOpenProjectHook } from './ui/variants';
+import { openProjectRecord } from './ui/app';
 
 events.refresh = refresh;
 events.draw = draw;
@@ -50,6 +52,8 @@ async function init(): Promise<void> {
     setupEditor();
     setupProjects();
     setupBg();
+    setupVariants();
+    setOpenProjectHook(openProjectRecord);
     setLoadSampleHook(loadSample);
     setTool('select');
     resizeCanvas();

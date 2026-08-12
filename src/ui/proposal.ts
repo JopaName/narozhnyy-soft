@@ -4,6 +4,9 @@ import { state } from '../core/state';
 import { el, nf } from '../core/utils';
 import { cv } from '../canvas/canvas';
 import { draw } from '../canvas/renderer';
+import { simulate } from '../domain/simulation';
+import { getVariantMetrics } from './variants';
+import { listVariants } from '../core/projects';
 
 export function snapshot(): string {
   try {
@@ -100,4 +103,67 @@ export function renderProposalNumbers(): void {
         '</div></div>',
     )
     .join('');
+
+  renderProposalVariants();
+}
+
+function renderProposalVariants(): void {
+  const variants = listVariants();
+  if (!variants.length) {
+    el('propVariants').style.display = 'none';
+    return;
+  }
+  el('propVariants').style.display = '';
+  const current = simulate();
+  const cols: { name: string; cap: number; panels: number; gen: number; capex: number; payback: string; profit: number }[] = [
+    {
+      name: state.project || 'Текущий проект',
+      cap: current.cap,
+      panels: state.panels.length,
+      gen: current.annualGen,
+      capex: current.capex,
+      payback: isFinite(current.payback) ? nf(current.payback, 1) + ' лет' : '—',
+      profit: current.cash[25],
+    },
+  ];
+  variants.forEach((v) => {
+    const sim = getVariantMetrics(v);
+    const panels = Array.isArray((v.data as Record<string, unknown>).panels)
+      ? ((v.data as Record<string, unknown>).panels as unknown[]).length
+      : 0;
+    cols.push({
+      name: v.name,
+      cap: sim.cap,
+      panels,
+      gen: sim.annualGen,
+      capex: sim.capex,
+      payback: isFinite(sim.payback) ? nf(sim.payback, 1) + ' лет' : '—',
+      profit: sim.cash[25],
+    });
+  });
+
+  const rows: [string, (c: (typeof cols)[number]) => string][] = [
+    ['Мощность', (c) => nf(c.cap, 2) + ' кВт'],
+    ['Панелей', (c) => c.panels + ' шт'],
+    ['Выработка / год', (c) => nf(c.gen) + ' кВт·ч'],
+    ['Стоимость', (c) => nf(c.capex) + ' ₽'],
+    ['Окупаемость', (c) => c.payback],
+    ['Выгода за 25 лет', (c) => nf(c.profit) + ' ₽'],
+  ];
+
+  const head =
+    '<tr>' +
+    '<td class="py-1.5 pr-2"></td>' +
+    cols.map((c) => '<td class="py-1.5 px-2 font-extrabold text-[12px] text-slate-900">' + c.name + '</td>').join('') +
+    '</tr>';
+  const body = rows
+    .map(
+      ([label, fmt]) =>
+        '<tr class="border-t border-slate-200">' +
+        '<td class="py-1.5 pr-2 text-[11px] text-slate-500">' + label + '</td>' +
+        cols.map((c) => '<td class="py-1.5 px-2 text-[12px] font-semibold text-slate-800">' + fmt(c) + '</td>').join('') +
+        '</tr>',
+    )
+    .join('');
+  el('propVariantsTbl').innerHTML = head + body;
 }

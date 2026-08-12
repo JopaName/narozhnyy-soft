@@ -1,5 +1,6 @@
 import { PANELS } from './data';
 import { sanitize, state, toPersistable } from './state';
+import type { VariantRecord } from './types';
 
 export interface ProjectRecord {
   id: string;
@@ -8,6 +9,7 @@ export interface ProjectRecord {
   panelCount: number;
   capKw: number;
   data: Record<string, unknown>;
+  variants: VariantRecord[];
 }
 
 export interface ProjectsStore {
@@ -25,7 +27,13 @@ function loadStore(): ProjectsStore {
     const raw = localStorage.getItem(STORE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw) as ProjectsStore;
-      if (Array.isArray(parsed.list)) return parsed;
+      if (Array.isArray(parsed.list)) {
+        /* Миграция: у старых записей нет variants */
+        parsed.list.forEach((r) => {
+          if (!Array.isArray(r.variants)) r.variants = [];
+        });
+        return parsed;
+      }
     }
   } catch {
     /* ignore */
@@ -76,6 +84,7 @@ function makeRecord(name: string, data: Record<string, unknown>): ProjectRecord 
     panelCount: panels.length,
     capKw: Math.round(panels.length * PANELS[panelIdx].p * 100) / 100,
     data,
+    variants: [],
   };
 }
 
@@ -167,5 +176,38 @@ export function deleteProject(id: string): void {
   if (store.activeId === id) {
     store.activeId = store.list.length ? store.list[store.list.length - 1].id : '';
   }
+  saveStore();
+}
+
+/* ═══ ВАРИАНТЫ ═══ */
+export function listVariants(): VariantRecord[] {
+  const rec = getActiveRecord();
+  return rec ? rec.variants.slice().sort((a, b) => a.createdAt - b.createdAt) : [];
+}
+
+export function addVariant(name: string, data: Record<string, unknown>): void {
+  const rec = getActiveRecord();
+  if (!rec) return;
+  rec.variants.push({
+    id: 'v' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
+    name: name.slice(0, 80),
+    createdAt: Date.now(),
+    data,
+  });
+  saveStore();
+}
+
+export function renameVariant(id: string, name: string): void {
+  const rec = getActiveRecord();
+  if (!rec) return;
+  const v = rec.variants.find((x) => x.id === id);
+  if (v) v.name = name.slice(0, 80);
+  saveStore();
+}
+
+export function deleteVariant(id: string): void {
+  const rec = getActiveRecord();
+  if (!rec) return;
+  rec.variants = rec.variants.filter((x) => x.id !== id);
   saveStore();
 }

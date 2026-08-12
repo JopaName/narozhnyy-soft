@@ -165,3 +165,10 @@ export interface StringCalcResult {
   spm: number;
   curOK: boolean;
 }
+
+export interface VariantRecord {
+  id: string;
+  name: string;
+  createdAt: number;
+  data: Record<string, unknown>;
+}

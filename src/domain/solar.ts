@@ -1,8 +1,9 @@
 import { CITIES, CUM_DAY } from '../core/data';
 import { events, R } from '../core/runtime';
 import { state } from '../core/state';
-import type { Point } from '../core/types';
+import type { AppState, Point } from '../core/types';
 import { clamp } from '../core/utils';
+import { resolveState } from './simulation';
 import { hull, pointInPoly } from './geometry';
 
 export interface SunPos {
@@ -51,15 +52,16 @@ export function currentShadowScene(): { sp: SunPos; polys: Point[][] } {
   return { sp, polys };
 }
 
-export function computeShading(): number[] {
+export function computeShading(overrides?: Partial<AppState>): number[] {
+  const s = resolveState(overrides);
   const loss = new Array(12).fill(0);
-  const obs = state.obstacles.filter((o) => (o.z || 0) > 0.05);
-  if (!state.panels.length || !obs.length) {
-    state.shadeLoss = loss;
+  const obs = s.obstacles.filter((o) => (o.z || 0) > 0.05);
+  if (!s.panels.length || !obs.length) {
+    if (!overrides) state.shadeLoss = loss;
     return loss;
   }
-  const city = CITIES[state.city] || CITIES.krasnodar;
-  const coarse = state.panels.length > 600;
+  const city = CITIES[s.city] || CITIES.krasnodar;
+  const coarse = s.panels.length > 600;
   const hours = coarse ? [7, 9, 11, 13, 15, 17] : [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18];
   for (let m = 0; m < 12; m++) {
     const doy = CUM_DAY[m] + 15;
@@ -95,10 +97,10 @@ export function computeShading(): number[] {
         shps.push({ poly: hp, bb: { a, b, c, d: d2 } });
       }
       let tot = 0;
-      for (const p of state.panels) {
+      for (const p of s.panels) {
         let hit = false;
-        for (const s of shps) {
-          if (!(p.x + p.w <= s.bb.a || s.bb.c <= p.x || p.y + p.h <= s.bb.b || s.bb.d <= p.y)) {
+        for (const sh of shps) {
+          if (!(p.x + p.w <= sh.bb.a || sh.bb.c <= p.x || p.y + p.h <= sh.bb.b || sh.bb.d <= p.y)) {
             hit = true;
             break;
           }
@@ -109,24 +111,24 @@ export function computeShading(): number[] {
         const ptsTest: number[][] = coarse
           ? [[cx, cy]]
           : [[cx, cy], [p.x, p.y], [p.x + p.w, p.y], [p.x, p.y + p.h], [p.x + p.w, p.y + p.h]];
-        let sh = 0;
+        let shCount = 0;
         for (const t of ptsTest) {
-          for (const s of shps) {
-            if (pointInPoly(t[0], t[1], s.poly)) {
-              sh++;
+          for (const sh of shps) {
+            if (pointInPoly(t[0], t[1], sh.poly)) {
+              shCount++;
               break;
             }
           }
         }
-        tot += sh / ptsTest.length;
+        tot += shCount / ptsTest.length;
       }
       const wgt = Math.sin(sp.alt);
-      lSum += wgt * (tot / state.panels.length);
+      lSum += wgt * (tot / s.panels.length);
       wSum += wgt;
     }
     loss[m] = wSum > 0 ? clamp(lSum / wSum, 0, 1) : 0;
   }
-  state.shadeLoss = loss;
+  if (!overrides) state.shadeLoss = loss;
   return loss;
 }
 

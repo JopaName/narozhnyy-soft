@@ -22,6 +22,7 @@ import { renderProposalNumbers, snapshot } from './proposal';
 import { renderBattery, renderLoan, renderStrings, setLoadSampleHook, syncInputs } from './sidepanel';
 import { autoLayout } from './toolbar';
 import { loadBgForProject } from './bg';
+import { renderVariants } from './variants';
 
 let heavyQueued = false;
 
@@ -73,6 +74,7 @@ export function refresh(): void {
       try {
         if (R.activeTab === 'energy') renderEnergy();
         if (R.activeTab === 'finance') renderFinance();
+        if (R.activeTab === 'variants') renderVariants();
         if (R.activeTab === 'proposal') renderProposalNumbers();
       } catch (err) {
         console.warn(err);
@@ -93,7 +95,7 @@ export function bindTabs(): void {
       const elTab = b as HTMLElement;
       R.activeTab = elTab.dataset.tab || 'scheme';
       document.querySelectorAll('.tab').forEach((x) => x.classList.toggle('active', x === b));
-      ['scheme', 'system', 'energy', 'finance', 'proposal'].forEach((v) => {
+      ['scheme', 'system', 'energy', 'finance', 'variants', 'proposal'].forEach((v) => {
         el('view-' + v).hidden = v !== R.activeTab;
       });
       if (R.activeTab === 'scheme') requestAnimationFrame(() => {
@@ -161,6 +163,7 @@ export function openProjectRecord(id: string): void {
   const rec = getRecord(id);
   if (!rec) return;
   Object.assign(state, sanitize(rec.data));
+  state.project = rec.name;
   state.tempRoof = [];
   R.sel = null;
   syncInputs();

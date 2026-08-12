@@ -1,12 +1,17 @@
 import { BATTERIES, CITIES, DAYS, INVERTERS, PANELS, SEASON } from '../core/data';
 import { state } from '../core/state';
-import type { StringCalcResult } from '../core/types';
+import type { AppState, StringCalcResult } from '../core/types';
 import { clamp, num0, sumArr } from '../core/utils';
 
-export function stringCalc(): StringCalcResult | null {
-  const N = state.panels.length;
-  const md = PANELS[state.panel];
-  const inv = INVERTERS[state.inverter];
+export function resolveState(overrides?: Partial<AppState>): AppState {
+  return { ...state, ...(overrides ?? {}) } as AppState;
+}
+
+export function stringCalc(overrides?: Partial<AppState>): StringCalcResult | null {
+  const s = resolveState(overrides);
+  const N = s.panels.length;
+  const md = PANELS[s.panel];
+  const inv = INVERTERS[s.inverter];
   if (!N) return null;
   const hotVmp = md.Vmp * 0.88;
   const coldVoc = md.Voc * 1.12;
@@ -28,24 +33,25 @@ export function stringCalc(): StringCalcResult | null {
   };
 }
 
-export function simulate() {
-  const city = CITIES[state.city] || CITIES.krasnodar;
-  const md = PANELS[state.panel] || PANELS[0];
-  const inv = INVERTERS[state.inverter] || INVERTERS[0];
-  const cons0 = Math.max(0, num0(state.consumption));
-  const tariff = Math.max(0, num0(state.tariff));
-  const expRate = Math.max(0, num0(state.exportRate));
-  const cap = state.panels.length * md.p;
-  const tf = Math.max(0.6, 1 - 0.006 * Math.abs(num0(state.tilt) - city.lat));
-  const af = Math.max(0.6, 1 - 0.0022 * Math.abs(num0(state.azimuth) - 180));
+export function simulate(overrides?: Partial<AppState>) {
+  const s = resolveState(overrides);
+  const city = CITIES[s.city] || CITIES.krasnodar;
+  const md = PANELS[s.panel] || PANELS[0];
+  const inv = INVERTERS[s.inverter] || INVERTERS[0];
+  const cons0 = Math.max(0, num0(s.consumption));
+  const tariff = Math.max(0, num0(s.tariff));
+  const expRate = Math.max(0, num0(s.exportRate));
+  const cap = s.panels.length * md.p;
+  const tf = Math.max(0.6, 1 - 0.006 * Math.abs(num0(s.tilt) - city.lat));
+  const af = Math.max(0.6, 1 - 0.0022 * Math.abs(num0(s.azimuth) - 180));
   const K = 0.78 * tf * af;
-  const lossArr = Array.isArray(state.shadeLoss) ? state.shadeLoss : [];
+  const lossArr = Array.isArray(s.shadeLoss) ? s.shadeLoss : [];
   const gen = city.ghi.map((g, i) => cap * g * 30.4 * K * (1 - clamp(lossArr[i] || 0, 0, 0.95)));
   const annualGen = sumArr(gen);
   const sSum = sumArr(SEASON) || 1;
   const cons = SEASON.map((c) => (cons0 * 12) / sSum * c);
   const annualCons = sumArr(cons);
-  const su = clamp(num0(state.selfUse), 0, 100) / 100;
+  const su = clamp(num0(s.selfUse), 0, 100) / 100;
   const self = gen.map((g, i) => Math.min(g * su, cons[i]));
   const exp = gen.map((g, i) => Math.max(0, g - self[i]));
 
@@ -54,10 +60,10 @@ export function simulate() {
   let usable = 0;
   let backupH = 0;
   let batPrice = 0;
-  if (state.batteryEnabled) {
-    const bat = BATTERIES[state.battery] || BATTERIES[0];
+  if (s.batteryEnabled) {
+    const bat = BATTERIES[s.battery] || BATTERIES[0];
     batPrice = bat.price;
-    usable = bat.cap * (1 - clamp(num0(state.reserve), 0, 90) / 100);
+    usable = bat.cap * (1 - clamp(num0(s.reserve), 0, 90) / 100);
     let tot = 0;
     gen.forEach((g, i) => {
       const exd = Math.max(0, g - cons[i]) / DAYS[i];
@@ -73,7 +79,7 @@ export function simulate() {
   const saveY = sumArr(self) * tariff + exportNet * expRate + batOut * tariff;
   const mount = cap * 6500;
   const install = cap * 14000;
-  const panelsCost = state.panels.length * md.price;
+  const panelsCost = s.panels.length * md.price;
   const capex = panelsCost + inv.price + mount + install + batPrice;
 
   const fin = {
@@ -84,13 +90,13 @@ export function simulate() {
     loanMonths: 0,
     positiveMonth: null as number | null,
   };
-  if (state.financing === 'loan' && capex > 0) {
-    const down = clamp(num0(state.down), 0, 100) / 100;
+  if (s.financing === 'loan' && capex > 0) {
+    const down = clamp(num0(s.down), 0, 100) / 100;
     fin.principal = capex * (1 - down);
     fin.ownFunds = capex - fin.principal;
-    const n = clamp(Math.round(num0(state.termMonths)), 6, 300);
+    const n = clamp(Math.round(num0(s.termMonths)), 6, 300);
     fin.loanMonths = n;
-    const r = Math.max(0, num0(state.rate)) / 100 / 12;
+    const r = Math.max(0, num0(s.rate)) / 100 / 12;
     fin.monthlyPay = r > 0 ? (fin.principal * r) / (1 - Math.pow(1 + r, -n)) : fin.principal / n;
     fin.overpay = fin.monthlyPay * n - fin.principal;
     let c = 0;
@@ -110,7 +116,7 @@ export function simulate() {
     cash.push(cash[cash.length - 1] + saveY * Math.pow(1.05, y - 1) * Math.pow(0.995, y - 1) - fin.monthlyPay * mInY);
   }
 
-  const shadeAvg = state.panels.length ? (sumArr(lossArr) / 12) * 100 : 0;
+  const shadeAvg = s.panels.length ? (sumArr(lossArr) / 12) * 100 : 0;
   const annualSelf = sumArr(self);
 
   return {

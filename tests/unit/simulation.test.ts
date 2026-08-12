@@ -282,4 +282,45 @@ describe('simulate', () => {
     expect(shaded.annualGen).toBeLessThan(clean.annualGen);
     expect(shaded.annualGen).toBeCloseTo(clean.annualGen * 0.5, -1); /* грубо */
   });
+
+  it('overrides: расчёт по другому состоянию без мутации state', () => {
+    state.roof = [
+      { x: 0, y: 0 },
+      { x: 15, y: 0 },
+      { x: 15, y: 8 },
+      { x: 0, y: 8 },
+    ];
+    state.panels = [
+      { x: 1, y: 1, w: 1.134, h: 1.722 },
+      { x: 3, y: 1, w: 1.134, h: 1.722 },
+    ];
+    state.consumption = 450;
+    const base = simulate();
+    const snapshot = JSON.stringify({ roof: state.roof, panels: state.panels, consumption: state.consumption });
+
+    /* вариант: в 2 раза больше панелей и другое потребление */
+    const variantPanels = [
+      { x: 1, y: 1, w: 1.134, h: 1.722 },
+      { x: 3, y: 1, w: 1.134, h: 1.722 },
+      { x: 5, y: 1, w: 1.134, h: 1.722 },
+      { x: 7, y: 1, w: 1.134, h: 1.722 },
+    ];
+    const v = simulate({ panels: variantPanels, consumption: 900 });
+
+    expect(v.cap).toBeCloseTo(base.cap * 2, 5);
+    expect(v.annualGen).toBeGreaterThan(base.annualGen);
+    expect(v.coverage).toBeLessThan(base.coverage * 1.5); /* потребление выросло */
+
+    /* state не изменился */
+    expect(JSON.stringify({ roof: state.roof, panels: state.panels, consumption: state.consumption })).toBe(snapshot);
+    expect(state.panels).toHaveLength(2);
+  });
+
+  it('stringCalc(overrides) работает по другому состоянию', () => {
+    state.panels = [];
+    const sc = stringCalc({ panels: [{ x: 0, y: 0, w: 1.134, h: 1.722 }], panel: 0, inverter: 2 });
+    expect(sc).not.toBeNull();
+    expect(sc!.N).toBe(1);
+    expect(stringCalc()).toBeNull(); /* глобальное состояние не тронуто */
+  });
 });
