@@ -1,3 +1,11 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+[hidden] {
+  display: none !important;
+}
+
 html,
 body {
   height: 100%;
@@ -181,13 +189,7 @@ input[type='range'] {
 }
 
 @media print {
-@import 'tailwindcss';
-
-@theme {
-  --font-sans: 'Manrope', ui-sans-serif, system-ui;
-}
-
-html,
+  html,
   body {
     overflow: visible !important;
     height: auto !important;

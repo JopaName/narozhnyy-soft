@@ -1,10 +1,8 @@
 import { defineConfig } from 'vitest/config';
-import tailwindcss from '@tailwindcss/vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig({
   plugins: [
-    tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
       manifest: {
@@ -23,16 +21,6 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,json,woff2}'],
-        runtimeCaching: [
-          {
-            urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
-            handler: 'CacheFirst',
-            options: {
-              cacheName: 'google-fonts',
-              expiration: { maxEntries: 4, maxAgeSeconds: 365 * 24 * 60 * 60 },
-            },
-          },
-        ],
       },
     }),
   ],
