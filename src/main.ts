@@ -1,0 +1,58 @@
+import './styles.css';
+import '@fontsource/manrope/cyrillic-400.css';
+import '@fontsource/manrope/cyrillic-500.css';
+import '@fontsource/manrope/cyrillic-600.css';
+import '@fontsource/manrope/cyrillic-700.css';
+import '@fontsource/manrope/cyrillic-800.css';
+
+import { BATTERIES, CITIES, INVERTERS, loadEquipment, MONTH_FULL, PANELS } from './core/data';
+import { events } from './core/runtime';
+import { el, nf, toast } from './core/utils';
+import { scheduleShading } from './domain/solar';
+import { initCanvasResizeObserver, resizeCanvas } from './canvas/canvas';
+import { setupCanvasInteractions } from './canvas/interactions';
+import { draw } from './canvas/renderer';
+import { bindInputs, setLoadSampleHook, syncInputs } from './ui/sidepanel';
+import { bindProjectIO, bindTabs, loadSample, refresh, restoreOrSample } from './ui/app';
+import { buildToolbar, setTool } from './ui/toolbar';
+import { loadOverrides, setupEditor } from './ui/equipment-editor';
+
+events.refresh = refresh;
+events.draw = draw;
+events.scheduleShading = scheduleShading;
+
+function populateSelects(): void {
+  el('selPanel').innerHTML = PANELS.map((p, i) => '<option value="' + i + '">' + p.name + ' · ' + nf(p.price) + ' ₽</option>').join('');
+  el('selInv').innerHTML = INVERTERS.map((v, i) => '<option value="' + i + '">' + v.name + ' · ' + nf(v.price) + ' ₽</option>').join('');
+  el('selBat').innerHTML = BATTERIES.map((b, i) => '<option value="' + i + '">' + b.name + ' · ' + nf(b.price) + ' ₽</option>').join('');
+  el('selCity').innerHTML = Object.entries(CITIES)
+    .map(([k, c]) => '<option value="' + k + '">' + c.name + '</option>')
+    .join('');
+  el('selShadeMonth').innerHTML = MONTH_FULL.map((m, i) => '<option value="' + i + '">' + m + '</option>').join('');
+}
+
+async function init(): Promise<void> {
+  try {
+    await loadEquipment();
+    loadOverrides();
+    populateSelects();
+    buildToolbar();
+    bindInputs();
+    bindTabs();
+    bindProjectIO();
+    setupCanvasInteractions();
+    initCanvasResizeObserver();
+    setupEditor();
+    setLoadSampleHook(loadSample);
+    setTool('select');
+    resizeCanvas();
+    restoreOrSample();
+    refresh();
+    draw();
+  } catch (err) {
+    console.error(err);
+    toast('Ошибка инициализации');
+  }
+}
+
+init();

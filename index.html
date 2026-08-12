@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Solar Studio — проектирование СЭС: тени, touch, прямые углы</title>
+<link rel="stylesheet" href="/src/styles.css">
+</head>
+<body class="bg-slate-950 text-slate-200 font-sans h-screen overflow-hidden flex flex-col">
+
+<header class="h-14 shrink-0 border-b border-slate-800 bg-slate-900/80 backdrop-blur flex items-center gap-4 px-4 z-20">
+  <div class="flex items-center gap-3">
+    <img src="/logo.svg" class="w-9 h-9 rounded-xl ring-1 ring-slate-700" alt="logo">
+    <div class="leading-tight">
+      <div class="font-extrabold text-[15px] text-white tracking-tight">Narozhnyy Soft</div>
+      <div class="text-[10px] text-slate-500 font-semibold -mt-0.5">проектирование СЭС · тени · touch · прямые углы</div>
+    </div>
+  </div>
+  <nav class="flex items-center gap-1 mx-auto" id="tabs">
+    <button class="tab active" data-tab="scheme">Схема</button>
+    <button class="tab" data-tab="system">Система</button>
+    <button class="tab" data-tab="energy">Выработка</button>
+    <button class="tab" data-tab="finance">Финансы</button>
+    <button class="tab" data-tab="proposal">КП</button>
+  </nav>
+  <div class="flex items-center gap-2">
+      <button class="btn btn-ghost" id="btnSample" title="Загрузить пример">✨ Пример</button>
+      <button class="btn btn-ghost" id="btnCatalog" title="Редактор каталога">⚙️</button>
+      <button class="btn btn-ghost" id="btnSave" title="Скачать проект (JSON)">💾</button>
+    <button class="btn btn-ghost" id="btnOpen" title="Открыть проект">📂</button>
+    <input type="file" id="fileOpen" accept=".json" class="hidden">
+  </div>
+</header>
+
+<main class="flex-1 flex min-h-0">
+
+  <!-- ══ СХЕМА ══ -->
+  <div id="view-scheme" class="flex-1 flex min-w-0">
+    <div class="w-14 shrink-0 border-r border-slate-800 bg-slate-900/60 flex flex-col items-center py-3 gap-1" id="toolbar"></div>
+    <div class="flex-1 relative min-w-0 bg-slate-950" id="canvasWrap">
+      <canvas id="cv" class="absolute inset-0 w-full h-full"></canvas>
+      <div id="emptyState" class="absolute inset-0 flex items-center justify-center pointer-events-none">
+        <div class="card p-8 text-center max-w-sm pointer-events-auto">
+          <div class="text-3xl mb-3">📐</div>
+          <div class="font-extrabold text-white text-lg mb-1">Начните проект</div>
+          <p class="text-[13px] text-slate-400 mb-5">Нарисуйте контур крыши кликами или касаниями. Включены прямые углы ⊥ — крыша рисуется ровными стенами. Два пальца — масштаб.</p>
+          <div class="flex gap-2 justify-center">
+            <button class="btn btn-amber" id="esDraw">Нарисовать крышу</button>
+            <button class="btn btn-ghost" id="esSample">Пример</button>
+          </div>
+        </div>
+      </div>
+      <div class="absolute bottom-0 inset-x-0 h-8 bg-slate-900/90 border-t border-slate-800 flex items-center px-3 gap-4 text-[11px] font-semibold text-slate-500">
+        <span id="stTool" class="text-amber-400"></span>
+        <span id="stHint" class="text-slate-400 truncate"></span>
+        <span id="stSun" class="text-sky-300 shrink-0"></span>
+        <span class="ml-auto shrink-0" id="stCoords">0.0 ; 0.0 м</span>
+        <span class="shrink-0" id="stZoom">100%</span>
+      </div>
+    </div>
+    <aside class="w-[320px] shrink-0 border-l border-slate-800 bg-slate-900/60 overflow-y-auto p-4 space-y-5">
+      <div>
+        <div class="lbl mb-2">Проект</div>
+        <input class="inp" id="inProject" maxlength="80" value="Частный дом, ул. Солнечная 12">
+      </div>
+      <div>
+        <div class="lbl mb-2">Автораскладка</div>
+        <div class="grid grid-cols-2 gap-1 bg-slate-950 rounded-xl p-1 mb-3">
+          <button id="btnPort" class="text-[12px] font-bold py-1.5 rounded-lg bg-amber-500/15 text-amber-400">Портрет</button>
+          <button id="btnLand" class="text-[12px] font-bold py-1.5 rounded-lg text-slate-400">Ландшафт</button>
+        </div>
+        <div class="grid grid-cols-2 gap-2 mb-3">
+          <div><div class="text-[11px] text-slate-500 mb-1">Зазор, м</div><input type="number" step="0.05" min="0" max="2" class="inp" id="inGap" value="0.05"></div>
+          <div><div class="text-[11px] text-slate-500 mb-1">Отступ от края, м</div><input type="number" step="0.1" min="0" max="3" class="inp" id="inMargin" value="0.4"></div>
+        </div>
+        <button class="btn btn-amber w-full justify-center" id="btnAuto">⚡ Автораскладка</button>
+        <label class="flex items-center gap-2 text-[12px] font-bold text-slate-300 cursor-pointer mt-3">
+          <input type="checkbox" id="chkOrth" class="w-4 h-4 accent-amber-500" checked> Прямые углы при рисовании крыши <span class="text-slate-500 font-semibold">(Alt — свободно)</span>
+        </label>
+      </div>
+      <div>
+        <div class="lbl mb-2">Сводка массива</div>
+        <div class="card divide-y divide-slate-800 text-[13px]">
+          <div class="flex justify-between px-3 py-2"><span class="text-slate-400">Панелей</span><b id="stCount" class="text-white">0</b></div>
+          <div class="flex justify-between px-3 py-2"><span class="text-slate-400">Мощность</span><b id="stCap" class="text-amber-400">0 кВт</b></div>
+          <div class="flex justify-between px-3 py-2"><span class="text-slate-400">Площадь крыши</span><b id="stRoofArea" class="text-white">0 м²</b></div>
+          <div class="flex justify-between px-3 py-2"><span class="text-slate-400">Занято панелями</span><b id="stUsed" class="text-white">0%</b></div>
+          <div class="px-3 py-2">
+            <div class="flex justify-between mb-1"><span class="text-slate-400">Нагрузка инвертора</span><b id="invBarTxt" class="text-white">0%</b></div>
+            <div class="h-1.5 bg-slate-800 rounded-full overflow-hidden"><div id="invBar" class="h-full bg-emerald-500 rounded-full transition-all" style="width:0%"></div></div>
+          </div>
+        </div>
+      </div>
+      <div class="card p-3">
+        <div class="flex items-center justify-between mb-2">
+          <div class="lbl">Тени и солнце</div>
+          <label class="flex items-center gap-1.5 text-[12px] font-bold text-slate-300 cursor-pointer">
+            <input type="checkbox" id="chkShade" class="w-4 h-4 accent-amber-500" checked> Показывать
+          </label>
+        </div>
+        <div class="grid grid-cols-2 gap-2 mb-2">
+          <div>
+            <div class="text-[11px] text-slate-500 mb-1">Месяц</div>
+            <select class="inp" id="selShadeMonth"></select>
+          </div>
+          <div>
+            <div class="text-[11px] text-slate-500 mb-1">Время: <b id="lblHour" class="text-white">14:00</b></div>
+            <input type="range" min="5" max="21" step="0.5" class="w-full mt-2.5" id="rngHour">
+          </div>
+        </div>
+        <div class="text-[12px] text-slate-400 mb-2" id="shadeInfo"></div>
+        <div id="obZRow" class="hidden">
+          <div class="text-[11px] text-slate-500 mb-1">Высота выбранного препятствия, м</div>
+          <input type="number" step="0.5" min="0" max="15" class="inp" id="inObZ" value="1">
+        </div>
+        <div class="text-[11px] text-slate-500 mt-2 leading-relaxed">Тени рассчитываются по широте города и учитываются в выработке. Выберите препятствие, чтобы задать высоту.</div>
+      </div>
+      <div class="space-y-2">
+        <button class="btn btn-ghost w-full justify-center" id="btnRotateSel">⟳ Повернуть выбранную</button>
+        <button class="btn btn-ghost w-full justify-center" id="btnClearPanels">🗑 Очистить панели</button>
+        <button class="btn w-full justify-center bg-rose-500/10 text-rose-400 hover:bg-rose-500/20" id="btnReset">✕ Сбросить всё</button>
+      </div>
+      <div class="card p-3 text-[12px] text-slate-400 leading-relaxed">
+        <b class="text-slate-300">Управление:</b> V/R/P/O/E — инструменты · X — прямые углы · S — тени · Ctrl+Z/Y — отмена · колесо или два пальца — масштаб · двойной клик/тап — замкнуть крышу
+      </div>
+    </aside>
+  </div>
+
+  <!-- ══ СИСТЕМА ══ -->
+  <div id="view-system" hidden class="flex-1 overflow-y-auto p-6">
+    <div class="max-w-5xl mx-auto grid md:grid-cols-2 gap-4">
+      <div class="card p-5">
+        <div class="lbl mb-3">Солнечные панели</div>
+        <select class="inp mb-3" id="selPanel"></select>
+        <div id="panelInfo" class="text-[13px] text-slate-400 space-y-1"></div>
+      </div>
+      <div class="card p-5">
+        <div class="lbl mb-3">Инвертор</div>
+        <select class="inp mb-3" id="selInv"></select>
+        <div class="flex justify-between text-[12px] mb-1"><span class="text-slate-500">Загрузка DC/AC</span><b id="invLoad2" class="text-white">—</b></div>
+        <div class="h-2 bg-slate-800 rounded-full overflow-hidden mb-2"><div id="invLoadBar2" class="h-full bg-emerald-500" style="width:0%"></div></div>
+        <div id="invWarn" class="text-[12px] text-emerald-400 font-semibold"></div>
+      </div>
+      <div class="card p-5">
+        <div class="lbl mb-3">География и ориентация</div>
+        <select class="inp mb-4" id="selCity"></select>
+        <div class="mb-4">
+          <div class="flex justify-between text-[12px] mb-1"><span class="text-slate-500">Угол наклона</span><b id="valTilt" class="text-white">45°</b></div>
+          <input type="range" min="0" max="90" class="w-full" id="inTilt">
+        </div>
+        <div>
+          <div class="flex justify-between text-[12px] mb-1"><span class="text-slate-500">Азимут (180° = юг)</span><b id="valAz" class="text-white">Юг</b></div>
+          <input type="range" min="0" max="359" class="w-full" id="inAz">
+        </div>
+      </div>
+      <div class="card p-5">
+        <div class="lbl mb-3">Потребление и тарифы</div>
+        <div class="grid grid-cols-2 gap-3 mb-4">
+          <div><div class="text-[11px] text-slate-500 mb-1">Потребление, кВт·ч/мес</div><input type="number" min="0" step="10" class="inp" id="inCons" value="450"></div>
+          <div><div class="text-[11px] text-slate-500 mb-1">Тариф, ₽/кВт·ч</div><input type="number" min="0" step="0.1" class="inp" id="inTariff" value="6.5"></div>
+        </div>
+        <div class="mb-4">
+          <div class="flex justify-between text-[12px] mb-1"><span class="text-slate-500">Самопотребление</span><b id="valSelf" class="text-white">60%</b></div>
+          <input type="range" min="0" max="100" class="w-full" id="inSelf">
+        </div>
+        <div><div class="text-[11px] text-slate-500 mb-1">Зелёный тариф (экспорт), ₽/кВт·ч</div><input type="number" min="0" step="0.1" class="inp" id="inExport" value="2.5"></div>
+      </div>
+      <div class="card p-5 border-teal-500/30">
+        <div class="flex items-center justify-between mb-3">
+          <div class="lbl">Накопитель энергии</div>
+          <label class="flex items-center gap-2 text-[12px] font-bold text-slate-300 cursor-pointer">
+            <input type="checkbox" id="chkBat" class="w-4 h-4 accent-teal-400"> Включить
+          </label>
+        </div>
+        <select class="inp mb-4" id="selBat"></select>
+        <div class="mb-4">
+          <div class="flex justify-between text-[12px] mb-1"><span class="text-slate-500">Резерв на отключение сети</span><b id="valReserve" class="text-white">20%</b></div>
+          <input type="range" min="0" max="60" class="w-full" id="inReserve">
+        </div>
+        <div id="batStats" class="space-y-1.5 text-[13px]"></div>
+        <div id="batWarn" class="text-[12px] font-semibold mt-2"></div>
+      </div>
+      <div class="card p-5 border-sky-500/30">
+        <div class="lbl mb-3">Электрика: стринг-расчёт</div>
+        <div id="stringInfo" class="space-y-1.5 text-[13px]"></div>
+        <div id="stringIssues" class="mt-3 space-y-1"></div>
+        <div class="text-[11px] text-slate-500 mt-3 leading-relaxed">Учитываются температурные поправки: Vmp при нагреве −12%, Voc при морозе +12%.</div>
+      </div>
+      <div class="card p-5 md:col-span-2 grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+        <div><div class="text-[11px] text-slate-500 mb-1">Мощность СЭС</div><div class="text-xl font-extrabold text-amber-400" id="sysCap">—</div></div>
+        <div><div class="text-[11px] text-slate-500 mb-1">Выработка / год</div><div class="text-xl font-extrabold text-white" id="sysGen">—</div></div>
+        <div><div class="text-[11px] text-slate-500 mb-1">Покрытие нужд</div><div class="text-xl font-extrabold text-sky-400" id="sysCov">—</div></div>
+        <div><div class="text-[11px] text-slate-500 mb-1">Окупаемость</div><div class="text-xl font-extrabold text-emerald-400" id="sysPay">—</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ ВЫРАБОТКА ══ -->
+  <div id="view-energy" hidden class="flex-1 overflow-y-auto p-6">
+    <div class="max-w-6xl mx-auto space-y-4">
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="kpi"><div class="u mb-1">Годовая выработка</div><div class="v text-amber-400" id="kGen">—</div><div class="u">кВт·ч</div></div>
+        <div class="kpi"><div class="u mb-1">Удельная выработка</div><div class="v" id="kSpec">—</div><div class="u">кВт·ч/кВт в год</div></div>
+        <div class="kpi"><div class="u mb-1">Покрытие потребления</div><div class="v text-sky-400" id="kCov">—</div><div class="u" id="kCovBat">%</div></div>
+        <div class="kpi"><div class="u mb-1">Снижение CO₂</div><div class="v text-emerald-400" id="kCo2">—</div><div class="u">т / год</div></div>
+      </div>
+      <div class="grid lg:grid-cols-3 gap-4">
+        <div class="card p-4 lg:col-span-2"><div class="lbl mb-2">Баланс по месяцам, кВт·ч</div><div class="relative h-[320px]"><canvas id="chEnergy"></canvas></div></div>
+        <div class="card p-4"><div class="lbl mb-2">Куда уходит выработка</div><div class="relative h-[320px]"><canvas id="chDonut"></canvas></div></div>
+      </div>
+      <div class="card p-4">
+        <div class="flex justify-between items-center mb-2">
+          <div class="lbl">Потери от затенения по месяцам</div>
+          <div class="text-[12px] font-bold text-slate-400" id="shadeAvg"></div>
+        </div>
+        <div class="grid grid-cols-6 md:grid-cols-12 gap-1" id="shadeGrid"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ ФИНАНСЫ ══ -->
+  <div id="view-finance" hidden class="flex-1 overflow-y-auto p-6">
+    <div class="max-w-6xl mx-auto space-y-4">
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="kpi"><div class="u mb-1">Капвложения (CAPEX)</div><div class="v" id="fCapex">—</div><div class="u">₽</div></div>
+        <div class="kpi"><div class="u mb-1">Экономия в год</div><div class="v text-emerald-400" id="fSave">—</div><div class="u">₽</div></div>
+        <div class="kpi"><div class="u mb-1">Окупаемость вложений</div><div class="v text-amber-400" id="fPay">—</div><div class="u">лет</div></div>
+        <div class="kpi"><div class="u mb-1">Итог за 25 лет</div><div class="v text-sky-400" id="fProfit">—</div><div class="u">₽ (накопленно)</div></div>
+      </div>
+      <div class="grid lg:grid-cols-2 gap-4">
+        <div class="card p-5">
+          <div class="lbl mb-3">Структура затрат</div>
+          <div id="capexList" class="space-y-2 text-[13px]"></div>
+        </div>
+        <div class="card p-5">
+          <div class="lbl mb-3">Финансирование</div>
+          <div class="grid grid-cols-2 gap-1 bg-slate-950 rounded-xl p-1 mb-3">
+            <button id="btnCash" class="text-[12px] font-bold py-1.5 rounded-lg bg-amber-500/15 text-amber-400">Наличные</button>
+            <button id="btnLoan" class="text-[12px] font-bold py-1.5 rounded-lg text-slate-400">Кредит</button>
+          </div>
+          <div id="loanInputs" class="grid grid-cols-3 gap-2 mb-3 hidden">
+            <div><div class="text-[11px] text-slate-500 mb-1">Взнос, %</div><input class="inp" type="number" id="inDown" value="30"></div>
+            <div><div class="text-[11px] text-slate-500 mb-1">Ставка, %/год</div><input class="inp" type="number" id="inRate" value="18"></div>
+            <div><div class="text-[11px] text-slate-500 mb-1">Срок, мес</div><input class="inp" type="number" id="inTerm" value="60"></div>
+          </div>
+          <div id="loanOut" class="divide-y divide-slate-800 text-[13px]"></div>
+        </div>
+      </div>
+      <div class="card p-4"><div class="lbl mb-2">Накопленный денежный поток, 25 лет</div><div class="relative h-[300px]"><canvas id="chCash"></canvas></div></div>
+    </div>
+  </div>
+
+  <!-- ══ КП ══ -->
+  <div id="view-proposal" hidden class="flex-1 overflow-y-auto p-6 bg-slate-900">
+    <div class="no-print max-w-[860px] mx-auto flex justify-end mb-4 gap-2">
+      <button class="btn btn-ghost" id="btnPrint">🖨 Печать</button>
+      <button class="btn btn-amber" id="btnPdf">📥 Скачать PDF</button>
+    </div>
+    <div id="paper" class="bg-white text-slate-800 max-w-[860px] mx-auto rounded-2xl shadow-2xl p-10">
+      <div class="flex items-start justify-between pb-6 border-b-2 border-amber-500">
+        <div class="flex items-center gap-3">
+          <img src="/logo.svg" class="w-12 h-12 rounded-xl" alt="">
+          <div><div class="font-extrabold text-xl text-slate-900">Solar Studio</div><div class="text-[11px] text-slate-500 font-semibold">Narozhnyy Soft · проектирование солнечных электростанций</div></div>
+        </div>
+        <div class="text-right text-[12px] text-slate-500"><div id="propDate"></div><div>КП № <b id="propNum" class="text-slate-800"></b></div></div>
+      </div>
+      <h1 class="text-2xl font-extrabold text-slate-900 mt-6 mb-1">Коммерческое предложение</h1>
+      <div class="text-[14px] font-bold text-amber-600 mb-5" id="propTitle"></div>
+      <div class="grid grid-cols-2 gap-6 mb-6 text-[13px]">
+        <div><div class="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-1">Заказчик</div><input class="paperinp" id="propClient" value="Иванов И. И."></div>
+        <div><div class="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-1">Адрес объекта</div><input class="paperinp" id="propAddress" value="Краснодарский край"></div>
+      </div>
+      <img src="/hero.svg" class="w-full h-48 object-cover rounded-xl mb-6" alt="">
+      <div class="grid grid-cols-2 gap-6 mb-6">
+        <div>
+          <div class="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-2">Схема раскладки</div>
+          <img id="propSnap" class="w-full rounded-lg border border-slate-200 bg-slate-900" alt="">
+        </div>
+        <div>
+          <div class="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-2">Ключевые показатели</div>
+          <ul id="propFacts" class="text-[13px] space-y-1.5"></ul>
+        </div>
+      </div>
+      <div class="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-2">Спецификация</div>
+      <table class="w-full text-[13px] mb-6 border-collapse" id="propSpec"></table>
+      <div class="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-2">Выработка по месяцам, кВт·ч</div>
+      <div class="grid grid-cols-6 gap-1 mb-6" id="propGen"></div>
+      <div class="rounded-xl bg-amber-50 border border-amber-200 p-4 grid grid-cols-4 gap-3 text-center mb-6" id="propFin"></div>
+      <div class="flex justify-between items-end text-[12px] text-slate-500 pt-4 border-t border-slate-200">
+        <div>Подготовлено в Solar Studio · расчёт предварительный</div>
+        <div class="text-right">Менеджер: ________________</div>
+      </div>
+    </div>
+  </div>
+</main>
+<div id="toast"></div>
+
+<!-- ══ РЕДАКТОР КАТАЛОГА ══ -->
+<div id="eq-modal" class="fixed inset-0 z-50 flex items-center justify-center" style="display:none;background:rgba(0,0,0,.7)">
+  <div class="card w-full max-w-3xl max-h-[85vh] flex flex-col m-4">
+    <div class="flex items-center justify-between p-4 border-b border-slate-800 shrink-0">
+      <div class="font-extrabold text-white text-lg">Редактор каталога</div>
+      <button id="eq-close" class="text-slate-400 hover:text-white text-xl leading-none w-8 h-8 flex items-center justify-center">&times;</button>
+    </div>
+    <div class="flex gap-1 p-2 bg-slate-950 shrink-0" id="eq-tabs"></div>
+    <div class="flex-1 overflow-y-auto p-4 space-y-3" id="eq-list"></div>
+    <div class="p-4 border-t border-slate-800 shrink-0 flex gap-2">
+      <button class="btn btn-amber flex-1 justify-center" id="eq-add">+ Добавить</button>
+      <button class="btn btn-ghost flex-1 justify-center" id="eq-save">💾 Сохранить</button>
+    </div>
+  </div>
+</div>
+
+<script type="module" src="/src/main.ts"></script>
+</body>
+</html>

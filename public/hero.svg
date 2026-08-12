@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 240" fill="none">
+  <defs>
+    <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a"/>
+      <stop offset="50%" stop-color="#1e293b"/>
+      <stop offset="100%" stop-color="#0f172a"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="240" rx="16" fill="url(#g)"/>
+  <circle cx="600" cy="60" r="40" fill="#f59e0b" opacity="0.15"/>
+  <text x="400" y="100" text-anchor="middle" font-family="Manrope,sans-serif" font-weight="800" font-size="28" fill="#fbbf24">Solar Studio</text>
+  <text x="400" y="140" text-anchor="middle" font-family="Manrope,sans-serif" font-weight="600" font-size="14" fill="#64748b">Narozhnyy Soft · проектирование солнечных электростанций</text>
+</svg>
