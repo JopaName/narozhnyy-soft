@@ -55,8 +55,10 @@ export function renderProposalNumbers(): void {
     ['Инвертор', INVERTERS[state.inverter].name],
   ];
   if (state.batteryEnabled) spec.push(['Накопитель энергии', BATTERIES[state.battery].name]);
-  spec.push(['Конструкции и крепёж', 'Анодированный алюминий, нержавеющий метиз']);
-  spec.push(['Монтаж и пусконаладка', 'Включены в стоимость']);
+  sim.bom.forEach((r) =>
+    spec.push([r.name, nf(r.qty, 0) + ' ' + r.unit + ' × ' + nf(r.price) + ' ₽ = ' + nf(r.total) + ' ₽']),
+  );
+  spec.push(['Монтаж и пусконаладка', nf(sim.install) + ' ₽']);
   if (state.financing === 'loan')
     spec.push(['Финансирование', 'Кредит ' + nf(sim.fin.principal) + ' ₽, платёж ' + nf(sim.fin.monthlyPay) + ' ₽/мес × ' + sim.fin.loanMonths + ' мес']);
   el('propSpec').innerHTML = spec

@@ -151,6 +151,7 @@ export interface SimResult {
   load: number;
   spec: number;
   co2: number;
+  bom: BomRow[];
 }
 
 export interface StringCalcResult {
@@ -171,4 +172,24 @@ export interface VariantRecord {
   name: string;
   createdAt: number;
   data: Record<string, unknown>;
+}
+
+export type BomPer = 'panel' | 'string' | 'project';
+
+export interface BomItem {
+  id: string;
+  name: string;
+  per: BomPer;
+  qty: number;
+  price: number;
+  unit: string;
+}
+
+export interface BomRow {
+  id: string;
+  name: string;
+  qty: number;
+  unit: string;
+  price: number;
+  total: number;
 }

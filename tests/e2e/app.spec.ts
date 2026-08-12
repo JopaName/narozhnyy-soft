@@ -237,7 +237,7 @@ test.describe('Solar Studio E2E', () => {
 
     await expect(page.locator('#eq-modal')).toBeVisible();
     const tabs = page.locator('#eq-tabs button');
-    await expect(tabs).toHaveCount(3);
+    await expect(tabs).toHaveCount(4);
     await expect(page.locator('#eq-list')).not.toBeEmpty();
 
     await page.locator('#eq-close').click();

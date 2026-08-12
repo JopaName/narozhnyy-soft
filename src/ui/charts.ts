@@ -93,10 +93,11 @@ export function renderFinance(): void {
   const rows: [string, number][] = [
     ['Панели (' + state.panels.length + ' шт)', sim.panelsCost],
     ['Инвертор', INVERTERS[state.inverter].price],
-    ['Монтажные конструкции', sim.mount],
-    ['Монтаж и пусконаладка', sim.install],
   ];
   if (state.batteryEnabled) rows.push(['Накопитель энергии', sim.batPrice]);
+  /* BOM: все позиции (крепёж идёт внутри bom — показываем как отдельную строку) */
+  sim.bom.forEach((r) => rows.push([r.name + ' · ' + nf(r.qty, 0) + ' ' + r.unit + ' × ' + nf(r.price) + ' ₽', r.total]));
+  rows.push(['Монтаж и пусконаладка', sim.install]);
   el('capexList').innerHTML =
     rows
       .map(

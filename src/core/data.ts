@@ -1,4 +1,4 @@
-import type { BatteryData, CityData, InverterData, PanelData } from './types';
+import type { BatteryData, BomItem, CityData, InverterData, PanelData } from './types';
 
 export const MONTHS = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
 export const MONTH_FULL = [
@@ -49,9 +49,21 @@ export const BATTERIES_DEFAULT: BatteryData[] = [
   { name: 'Growatt Ark XH — 13.8 кВт·ч', cap: 13.82, price: 640000 },
 ];
 
+export const BOM_DEFAULT: BomItem[] = [
+  { id: 'rack', name: 'Система крепления на панель', per: 'panel', qty: 1, price: 2100, unit: 'шт' },
+  { id: 'dc_cable', name: 'Кабель DC 6 мм²', per: 'string', qty: 15, price: 180, unit: 'м' },
+  { id: 'ac_cable', name: 'Кабель AC 5×6 мм²', per: 'project', qty: 10, price: 350, unit: 'м' },
+  { id: 'dc_breaker', name: 'Выключатель DC на стринг', per: 'string', qty: 1, price: 3500, unit: 'шт' },
+  { id: 'spd_dc', name: 'УЗИП DC', per: 'project', qty: 1, price: 4800, unit: 'шт' },
+  { id: 'ac_protection', name: 'Автомат + УЗО AC', per: 'project', qty: 1, price: 5200, unit: 'шт' },
+  { id: 'meter', name: 'Счётчик двунаправленный', per: 'project', qty: 1, price: 9500, unit: 'шт' },
+  { id: 'monitoring', name: 'Мониторинг Wi-Fi', per: 'project', qty: 1, price: 6500, unit: 'шт' },
+];
+
 export let PANELS: PanelData[] = [...PANELS_DEFAULT];
 export let INVERTERS: InverterData[] = [...INVERTERS_DEFAULT];
 export let BATTERIES: BatteryData[] = [...BATTERIES_DEFAULT];
+export let BOM: BomItem[] = [...BOM_DEFAULT];
 
 export async function loadEquipment(): Promise<void> {
   try {
@@ -67,6 +79,9 @@ export async function loadEquipment(): Promise<void> {
     if (Array.isArray(data.batteries) && data.batteries.length) {
       BATTERIES = data.batteries as BatteryData[];
     }
+    if (Array.isArray(data.bom) && data.bom.length) {
+      BOM = data.bom as BomItem[];
+    }
   } catch {
     /* падаем на дефолты, зашитые в коде */
   }
@@ -76,4 +91,5 @@ export function resetEquipment(): void {
   PANELS = [...PANELS_DEFAULT];
   INVERTERS = [...INVERTERS_DEFAULT];
   BATTERIES = [...BATTERIES_DEFAULT];
+  BOM = [...BOM_DEFAULT];
 }

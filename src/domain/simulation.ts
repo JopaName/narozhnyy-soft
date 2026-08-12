@@ -2,6 +2,7 @@ import { BATTERIES, CITIES, DAYS, INVERTERS, PANELS, SEASON } from '../core/data
 import { state } from '../core/state';
 import type { AppState, StringCalcResult } from '../core/types';
 import { clamp, num0, sumArr } from '../core/utils';
+import { bomTotal, calcBom } from './bom';
 
 export function resolveState(overrides?: Partial<AppState>): AppState {
   return { ...state, ...(overrides ?? {}) } as AppState;
@@ -77,10 +78,15 @@ export function simulate(overrides?: Partial<AppState>) {
 
   const exportNet = Math.max(0, sumArr(exp) - batCharge);
   const saveY = sumArr(self) * tariff + exportNet * expRate + batOut * tariff;
-  const mount = cap * 6500;
+
+  /* BOM: крепёж (rack) + кабели/защита/счётчик/мониторинг */
+  const bom = calcBom(overrides);
+  const rackRow = bom.find((r) => r.id === 'rack');
+  const mount = rackRow ? rackRow.total : cap * 6500;
+  const bomExtra = bomTotal(bom.filter((r) => r.id !== 'rack'));
   const install = cap * 14000;
   const panelsCost = s.panels.length * md.price;
-  const capex = panelsCost + inv.price + mount + install + batPrice;
+  const capex = panelsCost + inv.price + mount + install + bomExtra + batPrice;
 
   const fin = {
     monthlyPay: 0,
@@ -146,5 +152,6 @@ export function simulate(overrides?: Partial<AppState>) {
     load: inv.p > 0 ? (cap / inv.p) * 100 : 0,
     spec: cap > 0 ? annualGen / cap : 0,
     co2: (annualGen * 0.45) / 1000,
+    bom,
   };
 }

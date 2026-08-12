@@ -1,18 +1,24 @@
-import { BATTERIES, INVERTERS, PANELS } from '../core/data';
-import type { BatteryData, InverterData, PanelData } from '../core/types';
+import { BATTERIES, BOM, INVERTERS, PANELS } from '../core/data';
+import type { BatteryData, BomItem, InverterData, PanelData } from '../core/types';
 import { el, nf, toast } from '../core/utils';
 import { events } from '../core/runtime';
 import { state } from '../core/state';
 
-type EqType = 'panels' | 'inverters' | 'batteries';
+type EqType = 'panels' | 'inverters' | 'batteries' | 'bom';
 let currentTab: EqType = 'panels';
 const STORAGE_KEY = 'equipment_override';
 
-function snapshot(): { panels: PanelData[]; inverters: InverterData[]; batteries: BatteryData[] } {
+function snapshot(): {
+  panels: PanelData[];
+  inverters: InverterData[];
+  batteries: BatteryData[];
+  bom: BomItem[];
+} {
   return {
     panels: [...PANELS],
     inverters: [...INVERTERS],
     batteries: [...BATTERIES],
+    bom: [...BOM],
   };
 }
 
@@ -30,7 +36,12 @@ export function loadOverrides(): void {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return;
-    const data = JSON.parse(raw) as { panels?: PanelData[]; inverters?: InverterData[]; batteries?: BatteryData[] };
+    const data = JSON.parse(raw) as {
+      panels?: PanelData[];
+      inverters?: InverterData[];
+      batteries?: BatteryData[];
+      bom?: BomItem[];
+    };
     if (data.panels?.length) {
       PANELS.length = 0;
       PANELS.push(...data.panels);
@@ -42,6 +53,10 @@ export function loadOverrides(): void {
     if (data.batteries?.length) {
       BATTERIES.length = 0;
       BATTERIES.push(...data.batteries);
+    }
+    if (data.bom?.length) {
+      BOM.length = 0;
+      BOM.push(...data.bom);
     }
   } catch {
     /* ignore */
@@ -91,6 +106,7 @@ function renderTabs(): void {
     ['panels', 'Панели'],
     ['inverters', 'Инверторы'],
     ['batteries', 'Батареи'],
+    ['bom', 'Смета'],
   ];
   el('eq-tabs').innerHTML = tabs
     .map(
@@ -115,9 +131,10 @@ function renderTabs(): void {
   });
 }
 
-function getCurrent(tab: EqType): PanelData[] | InverterData[] | BatteryData[] {
+function getCurrent(tab: EqType): PanelData[] | InverterData[] | BatteryData[] | BomItem[] {
   if (tab === 'panels') return edited.panels;
   if (tab === 'inverters') return edited.inverters;
+  if (tab === 'bom') return edited.bom;
   return edited.batteries;
 }
 
@@ -133,7 +150,7 @@ function renderList(): void {
   container.innerHTML = items
     .map((item, i) => {
       const name = String(item.name || '');
-      const fields = getFields(currentTab, item as unknown as PanelData | InverterData | BatteryData);
+      const fields = getFields(currentTab, item as unknown as PanelData | InverterData | BatteryData | BomItem);
       return (
         '<div class="card p-3 flex items-start gap-3 group">' +
         '<div class="flex-1 min-w-0">' +
@@ -165,10 +182,14 @@ function renderList(): void {
   });
 }
 
-function getFields(tab: EqType, item: PanelData | InverterData | BatteryData): string {
+function getFields(tab: EqType, item: PanelData | InverterData | BatteryData | BomItem): string {
   if (tab === 'panels') {
     const p = item as PanelData;
     return p.p * 1000 + ' Вт · ' + nf(p.w, 2) + '×' + nf(p.h, 2) + ' м · ' + nf(p.price) + ' ₽ · Vmp ' + p.Vmp + ' В';
+  }
+  if (tab === 'bom') {
+    const b = item as BomItem;
+    return b.qty + ' ' + b.unit + ' × ' + nf(b.price) + ' ₽ · на ' + b.per + ' (' + b.id + ')';
   }
   if (tab === 'inverters') {
     const inv = item as InverterData;
@@ -223,6 +244,15 @@ function editItem(idx: number): void {
     askNum('Ёмкость, кВт·ч', bat.cap, (v) => (bat.cap = v));
     askNum('Цена, ₽', bat.price, (v) => (bat.price = v));
   }
+  if (currentTab === 'bom') {
+    const b = item as unknown as BomItem;
+    askNum('Количество', b.qty, (v) => (b.qty = v));
+    askNum('Цена, ₽', b.price, (v) => (b.price = v));
+    const unit = prompt('Единица (шт/м):', b.unit);
+    if (unit !== null && unit) b.unit = unit;
+    const per = prompt('На что считается (panel/string/project):', b.per);
+    if (per === 'panel' || per === 'string' || per === 'project') b.per = per;
+  }
   renderEditor();
 }
 
@@ -271,6 +301,15 @@ function addItem(): void {
       imax: 12,
       hybrid: false,
     });
+  } else if (currentTab === 'bom') {
+    edited.bom.push({
+      id: 'item_' + Date.now().toString(36),
+      name: 'Новая позиция',
+      per: 'project',
+      qty: 1,
+      price: 1000,
+      unit: 'шт',
+    });
   } else {
     edited.batteries.push({
       name: 'Новая батарея',
@@ -288,6 +327,8 @@ function saveEditor(): void {
   INVERTERS.push(...edited.inverters);
   BATTERIES.length = 0;
   BATTERIES.push(...edited.batteries);
+  BOM.length = 0;
+  BOM.push(...edited.bom);
   persist();
   toast('Каталог сохранён');
   closeEditor();

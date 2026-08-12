@@ -21,5 +21,15 @@
     { "name": "BYD HVS — 7.7 кВт·ч", "cap": 7.68, "price": 355000 },
     { "name": "BYD HVM — 11.0 кВт·ч", "cap": 11.04, "price": 465000 },
     { "name": "Growatt Ark XH — 13.8 кВт·ч", "cap": 13.82, "price": 640000 }
+  ],
+  "bom": [
+    { "id": "rack", "name": "Система крепления на панель", "per": "panel", "qty": 1, "price": 2100, "unit": "шт" },
+    { "id": "dc_cable", "name": "Кабель DC 6 мм²", "per": "string", "qty": 15, "price": 180, "unit": "м" },
+    { "id": "ac_cable", "name": "Кабель AC 5×6 мм²", "per": "project", "qty": 10, "price": 350, "unit": "м" },
+    { "id": "dc_breaker", "name": "Выключатель DC на стринг", "per": "string", "qty": 1, "price": 3500, "unit": "шт" },
+    { "id": "spd_dc", "name": "УЗИП DC", "per": "project", "qty": 1, "price": 4800, "unit": "шт" },
+    { "id": "ac_protection", "name": "Автомат + УЗО AC", "per": "project", "qty": 1, "price": 5200, "unit": "шт" },
+    { "id": "meter", "name": "Счётчик двунаправленный", "per": "project", "qty": 1, "price": 9500, "unit": "шт" },
+    { "id": "monitoring", "name": "Мониторинг Wi-Fi", "per": "project", "qty": 1, "price": 6500, "unit": "шт" }
   ]
 }
