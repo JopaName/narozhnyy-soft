@@ -12,15 +12,21 @@
 
 ## 2. Рабочий процесс
 
-1. `npm run dev` → правишь → смотришь демо на localhost:5173 (горячая перезагрузка)
-2. Правки только в `src/`, `index.html`, `public/`
-3. `android/` делится на:
-   - **source (правим):** `app/build.gradle`, `app/src/main/res/`, `app/src/main/AndroidManifest.xml`
-   - **generated (не трогаем):** `app/src/main/assets/`, `capacitor.config.json`, `android/build/`
-4. Гейты перед отправкой:
-   - **Перед коммитом:** `npx tsc -p tsconfig.app.json --noEmit` (0 ошибок) + `npm run test:unit`
-   - **Перед пушем:** `npm run build` (production-сборка работает!) + `npm run test:e2e`
-   - **Перед релизом:** прогнать демо на телефоне/эмуляторе (smoke: канвас, PDF, каталог, сохранение)
+**Демо-превью (вариант A, обязателен перед пушем):**
+1. `npm run demo` — dev-сервер с горячей перезагрузкой + автооткрытие браузера (http://localhost:5173)
+2. Правишь код в `src/` → браузер обновляется сам → смотришь результат
+3. Прогнал глазами ключевые места (схема, вкладки, КП) → только потом пуш
+
+**Правки только в:** `src/`, `index.html`, `public/`
+
+**android/ делится на:**
+- **source (правим):** `app/build.gradle`, `app/src/main/res/`, `app/src/main/AndroidManifest.xml`
+- **generated (не трогаем):** `app/src/main/assets/`, `capacitor.config.json`, `android/build/`
+
+**Гейты перед отправкой:**
+- **Перед коммитом:** `npx tsc -p tsconfig.app.json --noEmit` (0 ошибок) + `npm run test:unit`
+- **Перед пушем:** `npm run build` (production-сборка работает!) + `npm run test:e2e`
+- **Перед релизом:** демо-просмотр + smoke на телефоне (канвас, PDF, каталог, сохранение)
 
 ## 3. Версионирование
 
@@ -81,7 +87,7 @@ gh release view v1.0.x # → в релизе есть SolarStudio.apk
 |-----|-----|
 | Репозиторий | https://github.com/JopaName/narozhnyy-soft |
 | Скачать APK (всегда свежий) | https://github.com/JopaName/narozhnyy-soft/releases/latest |
-| Демо-сервер | `npm run dev` → http://localhost:5173 |
+| Демо-сервер | `npm run demo` → http://localhost:5173 (браузер открывается сам) |
 | APK после локальной сборки | `android/app/build/outputs/apk/debug/app-debug.apk` |
 | Каталог оборудования | `public/equipment.json` |
 | Скриншоты для README | `docs/screenshots/` (обновлять при смене UI) |

@@ -6,6 +6,7 @@
   "description": "Solar Studio — проектирование СЭС (Narozhnyy Soft)",
   "scripts": {
     "dev": "vite",
+    "demo": "vite --open",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "test": "npm run test:unit && npm run test:e2e",
@@ -22,9 +23,7 @@
     "@capacitor/cli": "^8.5.0",
     "@capacitor/core": "^8.5.0",
     "@fontsource/manrope": "^5.3.0",
-    "@tailwindcss/vite": "^4.3.3",
     "chart.js": "^4.4.9",
-    "es-abstract": "^1.24.2",
     "html2canvas": "^1.4.1",
     "jspdf": "^4.2.1"
   },
