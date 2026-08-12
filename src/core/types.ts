@@ -86,6 +86,11 @@ export interface AppState {
   panels: PanelRect[];
   obstacles: Obstacle[];
   tempRoof: Point[];
+  bg: {
+    visible: boolean;
+    opacity: number;
+    calibS: number;
+  };
 }
 
 export interface ViewState {

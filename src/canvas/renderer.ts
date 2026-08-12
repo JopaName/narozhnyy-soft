@@ -4,6 +4,7 @@ import { state } from '../core/state';
 import { el, fmtHour, nf } from '../core/utils';
 import { orthSnap, roofBBox, validRect } from '../domain/geometry';
 import { currentShadowScene } from '../domain/solar';
+import { getBgImage } from '../ui/bg';
 import { ctx, cv, dpr } from './canvas';
 import { m2s } from './view';
 
@@ -16,6 +17,15 @@ export function draw(): void {
   ctx.clearRect(0, 0, W, H);
   ctx.fillStyle = '#020617';
   ctx.fillRect(0, 0, W, H);
+
+  /* Фон: фото крыши */
+  const bgImg = getBgImage();
+  if (bgImg && state.bg.visible) {
+    ctx.globalAlpha = state.bg.opacity;
+    const factor = state.bg.calibS > 0 ? R.view.s / state.bg.calibS : 1;
+    ctx.drawImage(bgImg, R.view.ox, R.view.oy, bgImg.naturalWidth * factor, bgImg.naturalHeight * factor);
+    ctx.globalAlpha = 1;
+  }
 
   const step = R.view.s >= 14 ? 1 : 5;
   const wx0 = -R.view.ox / R.view.s;

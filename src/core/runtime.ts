@@ -21,6 +21,7 @@ export const R = {
   lastTap: null as { t: number; x: number; y: number } | null,
   activeTab: 'scheme' as string,
   sim: null as SimResult | null,
+  calib: null as { stage: 1 | 2; p1: Point | null } | null,
 };
 
 export const events = {

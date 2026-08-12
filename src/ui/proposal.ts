@@ -3,10 +3,24 @@ import { R } from '../core/runtime';
 import { state } from '../core/state';
 import { el, nf } from '../core/utils';
 import { cv } from '../canvas/canvas';
+import { draw } from '../canvas/renderer';
 
 export function snapshot(): string {
   try {
-    if (cv.width > 0) return cv.toDataURL('image/png');
+    if (cv.width > 0) {
+      /* Фото крыши не попадает в КП */
+      const wasVisible = state.bg.visible;
+      if (wasVisible) {
+        state.bg.visible = false;
+        draw();
+      }
+      const dataUrl = cv.toDataURL('image/png');
+      if (wasVisible) {
+        state.bg.visible = true;
+        draw();
+      }
+      return dataUrl;
+    }
   } catch {
     /* canvas может быть tainted при внешних ресурсах */
   }

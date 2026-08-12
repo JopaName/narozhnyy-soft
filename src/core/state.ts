@@ -35,6 +35,11 @@ export const state: AppState = {
   panels: [],
   obstacles: [],
   tempRoof: [],
+  bg: {
+    visible: false,
+    opacity: 0.5,
+    calibS: 0,
+  },
 };
 
 const okPt = (p: unknown): p is Point => !!p && typeof p === 'object' && isFinite((p as Point).x) && isFinite((p as Point).y);
@@ -77,6 +82,12 @@ export function sanitize(o: Record<string, unknown>): AppState {
   s.orth = o.orth !== false;
   s.orientation = o.orientation === 'landscape' ? 'landscape' : 'portrait';
   s.project = typeof o.project === 'string' ? o.project.slice(0, 80) : state.project;
+  const bgRaw = (o.bg as Record<string, unknown> | undefined) || {};
+  s.bg = {
+    visible: bgRaw.visible === true,
+    opacity: clamp(parseFloat(String(bgRaw.opacity)) || 0.5, 0.1, 1),
+    calibS: Math.max(0, parseFloat(String(bgRaw.calibS)) || 0),
+  };
   return s;
 }
 

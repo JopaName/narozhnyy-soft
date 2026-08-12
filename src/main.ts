@@ -13,11 +13,14 @@ import { initCanvasResizeObserver, resizeCanvas } from './canvas/canvas';
 import { setupCanvasInteractions } from './canvas/interactions';
 import { draw } from './canvas/renderer';
 import { bindInputs, setLoadSampleHook, syncInputs } from './ui/sidepanel';
-import { bindProjectIO, bindTabs, loadSample, refresh, restoreOrSample } from './ui/app';
+import { bindProjectIO, bindTabs, loadSample, refresh, restoreActiveOrSample } from './ui/app';
 import { buildToolbar, setTool } from './ui/toolbar';
 import { loadOverrides, setupEditor } from './ui/equipment-editor';
 import { startUpdateChecker } from './ui/update-checker';
 import { APP_VERSION } from './core/version';
+import { setupProjects } from './ui/projects';
+import { setupBg } from './ui/bg';
+import { state } from './core/state';
 
 events.refresh = refresh;
 events.draw = draw;
@@ -45,15 +48,18 @@ async function init(): Promise<void> {
     setupCanvasInteractions();
     initCanvasResizeObserver();
     setupEditor();
+    setupProjects();
+    setupBg();
     setLoadSampleHook(loadSample);
     setTool('select');
     resizeCanvas();
-    restoreOrSample();
+    restoreActiveOrSample();
     refresh();
     draw();
     const badge = document.getElementById('appVersion');
     if (badge) badge.textContent = 'v' + APP_VERSION;
     startUpdateChecker();
+    (window as unknown as Record<string, unknown>).__appState = state;
   } catch (err) {
     console.error(err);
     toast('Ошибка инициализации');

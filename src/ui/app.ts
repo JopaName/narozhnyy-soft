@@ -1,6 +1,15 @@
 import { MONTHS, PANELS } from '../core/data';
 import { commit, events, R } from '../core/runtime';
-import { loadLocal, queueSave, sanitize, state, toPersistable } from '../core/state';
+import { sanitize, state, toPersistable } from '../core/state';
+import {
+  createProject,
+  flushSave,
+  getActiveRecord,
+  getActiveId,
+  getRecord,
+  initProjects,
+  queueSave,
+} from '../core/projects';
 import { clamp, el, nf, toast } from '../core/utils';
 import { polyArea } from '../domain/geometry';
 import { computeShading } from '../domain/solar';
@@ -12,6 +21,7 @@ import { renderEnergy, renderFinance } from './charts';
 import { renderProposalNumbers, snapshot } from './proposal';
 import { renderBattery, renderLoan, renderStrings, setLoadSampleHook, syncInputs } from './sidepanel';
 import { autoLayout } from './toolbar';
+import { loadBgForProject } from './bg';
 
 let heavyQueued = false;
 
@@ -143,9 +153,52 @@ export function loadFrom(obj: Record<string, unknown>): void {
   refresh();
   fitView();
   commit();
+  flushSave();
+  loadBgForProject(getActiveId());
+}
+
+export function openProjectRecord(id: string): void {
+  const rec = getRecord(id);
+  if (!rec) return;
+  Object.assign(state, sanitize(rec.data));
+  state.tempRoof = [];
+  R.sel = null;
+  syncInputs();
+  computeShading();
+  refresh();
+  if (state.roof.length >= 3 || state.panels.length) fitView();
+  else {
+    R.view = { s: 22, ox: 80, oy: 60 };
+    draw();
+  }
+  commit();
+  loadBgForProject(id);
+  toast('Открыт: ' + rec.name);
+}
+
+export function resetToEmpty(name: string): void {
+  state.roof = [];
+  state.panels = [];
+  state.obstacles = [];
+  state.tempRoof = [];
+  state.project = name;
+  R.sel = null;
+  R.calib = null;
+  syncInputs();
+  computeShading();
+  refresh();
+  R.view = { s: 22, ox: 80, oy: 60 };
+  draw();
+  flushSave();
+  loadBgForProject(getActiveId());
+  toast('Создан: ' + name);
 }
 
 export function loadSample(): void {
+  if (!getActiveId()) {
+    createProject('Пример проекта');
+    state.project = 'Пример проекта';
+  }
   state.roof = [
     { x: 2, y: 2 },
     { x: 18, y: 2 },
@@ -173,14 +226,15 @@ export function loadSample(): void {
   syncInputs();
   autoLayout();
   fitView();
+  flushSave();
   toast('Пример проекта загружен ✨');
 }
 
-export function restoreOrSample(): void {
-  const saved = loadLocal();
-  if (saved && Array.isArray(saved.roof) && (saved.roof as unknown[]).length >= 3) {
-    loadFrom(saved);
-    toast('Проект восстановлен из автосохранения');
+export function restoreActiveOrSample(): void {
+  initProjects();
+  const rec = getActiveRecord();
+  if (rec && Array.isArray(rec.data.roof) && (rec.data.roof as unknown[]).length >= 3) {
+    openProjectRecord(rec.id);
   } else {
     loadSample();
   }

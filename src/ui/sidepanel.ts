@@ -1,6 +1,7 @@
 import { BATTERIES, CITIES, INVERTERS, PANELS } from '../core/data';
 import { commit, events, R } from '../core/runtime';
-import { queueSave, state } from '../core/state';
+import { state } from '../core/state';
+import { queueSave } from '../core/projects';
 import { azLabel, clamp, el, fmtHour, nf, toast } from '../core/utils';
 import { rotateSel } from '../canvas/interactions';
 import { draw } from '../canvas/renderer';
@@ -8,6 +9,7 @@ import { scheduleShading } from '../domain/solar';
 import { downloadPdf } from './pdf';
 import { stringCalc } from '../domain/simulation';
 import { autoLayout, setTool, updateOrthUI } from './toolbar';
+import { syncBgUI } from './bg';
 
 export function bindNum(
   elInput: HTMLInputElement,
@@ -57,6 +59,7 @@ export function syncInputs(): void {
   el<HTMLInputElement>('rngHour').value = String(state.shadeHour);
   el('lblHour').textContent = fmtHour(state.shadeHour);
   updateOrthUI();
+  syncBgUI();
 }
 
 let loadSampleHook: (() => void) | null = null;

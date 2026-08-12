@@ -5,6 +5,7 @@ import type { Point } from '../core/types';
 import { clamp, el, nf, toast } from '../core/utils';
 import { orthSnap, panelDims, pruneInvalid, selfIntersects, validRect } from '../domain/geometry';
 import { setTool, updateOrthUI } from '../ui/toolbar';
+import { handleCalibClick } from '../ui/bg';
 import { cv } from './canvas';
 import { draw } from './renderer';
 import { s2m } from './view';
@@ -112,6 +113,10 @@ export function rotateSel(): void {
 /* ═══ POINTER / TOUCH ═══ */
 function handleDown(e: PointerEvent): void {
   if (e.pointerType === 'mouse' && e.button !== 0) return;
+  if (R.calib) {
+    handleCalibClick(e.clientX, e.clientY);
+    return;
+  }
   const m = s2m(e);
   if (state.tool === 'roof') {
     const now = performance.now();
@@ -419,6 +424,7 @@ export function setupCanvasInteractions(): void {
     if (k === 'escape') {
       state.tempRoof = [];
       R.sel = null;
+      R.calib = null;
       draw();
       events.refresh();
     }

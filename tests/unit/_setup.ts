@@ -31,4 +31,9 @@ export const defaultState: AppState = {
   panels: [],
   obstacles: [],
   tempRoof: [],
+  bg: {
+    visible: false,
+    opacity: 0.5,
+    calibS: 0,
+  },
 };
