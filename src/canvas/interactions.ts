@@ -8,6 +8,7 @@ import { setTool, updateOrthUI } from '../ui/toolbar';
 import { handleCalibClick } from '../ui/bg';
 import { closeMapMode, syncMapCenterFromView } from '../ui/map-browser';
 import { closeContextMenu, openContextMenu } from '../ui/context-menu';
+import { getCurrentEdges, snapToEdges } from '../core/edge-detect';
 import { cv } from './canvas';
 import { draw } from './renderer';
 import { s2m } from './view';
@@ -159,7 +160,14 @@ function handleDown(e: PointerEvent): void {
       }
     }
     R.lastTap = { t: now, x: e.clientX, y: e.clientY };
-    const pt = e.altKey ? { x: m.x, y: m.y } : orthSnap(m);
+    let pt = e.altKey ? { x: m.x, y: m.y } : orthSnap(m);
+    /* Примагничивание к краям, найденным на фоне */
+    if (state.snapEdges) {
+      const edges = getCurrentEdges();
+      if (edges && (edges.lines.length || edges.corners.length)) {
+        pt = snapToEdges(pt, edges, 14 / R.view.s);
+      }
+    }
     const t = state.tempRoof;
     if (t.length >= 3 && Math.hypot(pt.x - t[0].x, pt.y - t[0].y) < 12 / R.view.s) {
       closeRoof();

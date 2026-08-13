@@ -29,6 +29,7 @@ import { setupMapManager } from './ui/map-manager';
 import { setupMapButtons } from './ui/map-browser';
 import { setupMobileNav } from './ui/mobile-nav';
 import { setupContextMenu } from './ui/context-menu';
+import { setCurrentEdges, getCurrentEdges } from './core/edge-detect';
 
 events.refresh = refresh;
 events.draw = draw;
@@ -77,6 +78,8 @@ async function init(): Promise<void> {
     startUpdateChecker();
     (window as unknown as Record<string, unknown>).__appState = state;
     (window as unknown as Record<string, unknown>).__R = R;
+    (window as unknown as Record<string, unknown>).__setTestEdges = (e: unknown) => setCurrentEdges(e as never);
+    (window as unknown as Record<string, unknown>).__getTestEdges = () => getCurrentEdges();
   } catch (err) {
     console.error(err);
     toast('Ошибка инициализации');

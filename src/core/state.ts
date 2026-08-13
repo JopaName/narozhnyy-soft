@@ -48,6 +48,7 @@ export const state: AppState = {
   showDims: true,
   showObstacles: true,
   locked: [],
+  snapEdges: true,
 };
 
 const okPt = (p: unknown): p is Point => !!p && typeof p === 'object' && isFinite((p as Point).x) && isFinite((p as Point).y);
@@ -106,6 +107,7 @@ export function sanitize(o: Record<string, unknown>): AppState {
   s.locked = Array.isArray(o.locked)
     ? (o.locked as unknown[]).filter((v): v is number => typeof v === 'number' && isFinite(v))
     : [];
+  s.snapEdges = o.snapEdges !== false;
   return s;
 }
 

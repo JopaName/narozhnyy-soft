@@ -65,6 +65,7 @@ export function syncInputs(): void {
   el<HTMLInputElement>('chkGrid').checked = state.showGrid;
   el<HTMLInputElement>('chkDims').checked = state.showDims;
   el<HTMLInputElement>('chkObstacles').checked = state.showObstacles;
+  el<HTMLInputElement>('chkEdges').checked = state.snapEdges;
   updateOrthUI();
   syncBgUI();
 }
@@ -133,6 +134,11 @@ export function bindInputs(): void {
   };
   el<HTMLInputElement>('chkObstacles').onchange = (e) => {
     state.showObstacles = (e.target as HTMLInputElement).checked;
+    flushSave();
+    draw();
+  };
+  el<HTMLInputElement>('chkEdges').onchange = (e) => {
+    state.snapEdges = (e.target as HTMLInputElement).checked;
     flushSave();
     draw();
   };

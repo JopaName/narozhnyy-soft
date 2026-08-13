@@ -99,6 +99,7 @@ export interface AppState {
   showDims: boolean;
   showObstacles: boolean;
   locked: number[];
+  snapEdges: boolean;
 }
 
 export interface ViewState {

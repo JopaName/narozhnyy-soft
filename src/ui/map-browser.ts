@@ -17,7 +17,7 @@ import {
   tileZoomForScale,
 } from '../core/satellite';
 import { cv, dpr } from '../canvas/canvas';
-import { setBgImage, syncBgUI } from './bg';
+import { setBgImage, syncBgUI, detectEdgesForBg } from './bg';
 
 const tileCache = new Map<string, HTMLImageElement>();
 const loading = new Set<string>();
@@ -139,12 +139,13 @@ function applySatelliteBg(sat: { dataUrl: string; pixelX: number; pixelY: number
     R.view.s = sat.pxPerM;
     R.view.ox = W / 2 - worldX * R.view.s;
     R.view.oy = H / 2 - worldY * R.view.s;
-    closeMapMode();
-    toast('Снимок готов — обводите крышу (R)');
-    events.draw();
-  };
-  img.src = sat.dataUrl;
-}
+      closeMapMode();
+      toast('Снимок готов — обводите крышу (R)');
+      events.draw();
+      detectEdgesForBg();
+    };
+    img.src = sat.dataUrl;
+  }
 
 export async function useMapPlaceAsBackground(): Promise<void> {
   if (!R.mapMode) return;

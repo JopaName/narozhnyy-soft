@@ -27,6 +27,19 @@ test('реальный спутник: Геленджик, ул. Десантн�
   expect(info.bg.addr.toLowerCase()).toContain('геленджик');
   expect(info.view.s).toBeCloseTo(info.bg.calibS, 6);
 
+  /* Реальная детекция краёв: ждём результат и логируем */
+  await page.waitForTimeout(4000);
+  const edges = await page.evaluate(() => {
+    const get = (window as unknown as { __getTestEdges: () => { lines: unknown[]; corners: unknown[] } | null }).__getTestEdges;
+    const e = get();
+    return { lines: e?.lines.length ?? -1, corners: e?.corners.length ?? -1 };
+  });
+  console.log('EDGES DETECTED:', JSON.stringify(edges));
+  await page.screenshot({ path: 'test-results/edges-live.png' });
+  /* Детекция должна завершиться без краша; линий может быть любое число */
+  expect(edges.lines).toBeGreaterThanOrEqual(0);
+  expect(edges.corners).toBeGreaterThanOrEqual(0);
+
   /* скриншот для проверки, что снимок действительно спутниковый */
   await page.screenshot({ path: 'test-results/satellite-gelendzhik.png' });
 });

@@ -6,6 +6,7 @@ import { localToWorld, orthSnap, roofBBox, validRect } from '../domain/geometry'
 import { currentShadowScene, panelShade } from '../domain/solar';
 import { stringAssignments } from '../domain/simulation';
 import { getBgImage } from '../ui/bg';
+import { getCurrentEdges, clipLineToRect } from '../core/edge-detect';
 import { ensureTile, getCachedTile } from '../ui/map-browser';
 import { ctx, cv, dpr } from './canvas';
 import { m2s } from './view';
@@ -125,6 +126,39 @@ export function draw(): void {
     const factor = state.bg.calibS > 0 ? R.view.s / state.bg.calibS : 1;
     ctx.drawImage(bgImg, R.view.ox, R.view.oy, bgImg.naturalWidth * factor, bgImg.naturalHeight * factor);
     ctx.globalAlpha = 1;
+  }
+
+  /* Оверлей найденных краёв крыши */
+  if (state.snapEdges) {
+    const edges = getCurrentEdges();
+    if (edges) {
+      const worldRect = {
+        minX: -R.view.ox / R.view.s,
+        minY: -R.view.oy / R.view.s,
+        maxX: (W - R.view.ox) / R.view.s,
+        maxY: (H - R.view.oy) / R.view.s,
+      };
+      ctx.setLineDash([6, 5]);
+      ctx.lineWidth = 1;
+      edges.lines.forEach((l) => {
+        const seg = clipLineToRect(l, worldRect);
+        if (!seg) return;
+        const [p1, p2] = [m2s(seg[0].x, seg[0].y), m2s(seg[1].x, seg[1].y)];
+        ctx.strokeStyle = 'rgba(34,211,238,.35)';
+        ctx.beginPath();
+        ctx.moveTo(p1[0], p1[1]);
+        ctx.lineTo(p2[0], p2[1]);
+        ctx.stroke();
+      });
+      ctx.setLineDash([]);
+      edges.corners.forEach((c) => {
+        const [px, py] = m2s(c.x, c.y);
+        ctx.fillStyle = 'rgba(251,191,36,.8)';
+        ctx.beginPath();
+        ctx.arc(px, py, 3.5, 0, 7);
+        ctx.fill();
+      });
+    }
   }
 
   const step = R.view.s >= 14 ? 1 : 5;

@@ -7,6 +7,7 @@ import { geocodeAddress } from '../core/geocode';
 import { downloadSatelliteImage } from '../core/satellite';
 import { cv, dpr } from '../canvas/canvas';
 import { openMapMode } from './map-browser';
+import { detectEdges, setCurrentEdges } from '../core/edge-detect';
 
 let bgImg: HTMLImageElement | null = null;
 
@@ -16,6 +17,29 @@ export function getBgImage(): HTMLImageElement | null {
 
 export function setBgImage(img: HTMLImageElement | null): void {
   bgImg = img;
+}
+
+/* ═══ Детекция краёв крыши по фону ═══ */
+
+export function detectEdgesForBg(): void {
+  if (!bgImg || state.bg.calibS <= 0) {
+    setCurrentEdges(null);
+    return;
+  }
+  const img = bgImg;
+  const calibS = state.bg.calibS;
+  toast('Ищу края крыши…');
+  void detectEdges(img, calibS)
+    .then((res) => {
+      setCurrentEdges(res);
+      if (res.lines.length) toast('Найдено линий: ' + res.lines.length + ' — привязка активна');
+      else toast('Края не найдены — обводите вручную');
+      events.draw();
+    })
+    .catch(() => {
+      setCurrentEdges(null);
+      events.draw();
+    });
 }
 
 export function loadBgForProject(projectId: string): void {
@@ -137,6 +161,7 @@ export function removeBg(): void {
   state.bg.visible = false;
   state.bg.calibS = 0;
   state.bg.addr = '';
+  setCurrentEdges(null);
   if (projectId) deleteImage(projectId);
   flushSave();
   syncBgUI();
@@ -181,6 +206,7 @@ export async function loadSatelliteFromAddress(address: string, zoom: number): P
       R.view.oy = H / 2 - worldY * R.view.s;
       events.draw();
       toast('Снимок загружен — обводите крышу инструментом «Крыша» (R)');
+      detectEdgesForBg();
     };
     img.src = sat.dataUrl;
   } catch {

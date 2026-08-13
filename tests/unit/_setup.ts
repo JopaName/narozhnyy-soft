@@ -44,4 +44,5 @@ export const defaultState: AppState = {
   showDims: true,
   showObstacles: true,
   locked: [],
+  snapEdges: true,
 };
