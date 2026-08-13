@@ -27,6 +27,7 @@ import { storageInit } from './core/native-storage';
 import { setupAddrAutocomplete } from './ui/addr-autocomplete';
 import { setupMapManager } from './ui/map-manager';
 import { setupMapButtons } from './ui/map-browser';
+import { setupMobileNav } from './ui/mobile-nav';
 
 events.refresh = refresh;
 events.draw = draw;
@@ -61,6 +62,7 @@ async function init(): Promise<void> {
     setupMapManager();
     setupMapButtons();
     setupAddrAutocomplete();
+    setupMobileNav();
     setOpenProjectHook(openProjectRecord);
     setLoadSampleHook(loadSample);
     setTool('select');

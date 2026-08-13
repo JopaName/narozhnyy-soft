@@ -23,6 +23,7 @@ import { renderBattery, renderLoan, renderStrings, setLoadSampleHook, syncInputs
 import { autoLayout } from './toolbar';
 import { loadBgForProject } from './bg';
 import { renderVariants } from './variants';
+import { closeDrawer } from './mobile-nav';
 
 let heavyQueued = false;
 
@@ -94,6 +95,7 @@ export function bindTabs(): void {
     b.addEventListener('click', () => {
       const elTab = b as HTMLElement;
       R.activeTab = elTab.dataset.tab || 'scheme';
+      closeDrawer();
       document.querySelectorAll('.tab').forEach((x) => x.classList.toggle('active', x === b));
       ['scheme', 'system', 'energy', 'finance', 'variants', 'proposal'].forEach((v) => {
         el('view-' + v).hidden = v !== R.activeTab;

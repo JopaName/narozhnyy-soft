@@ -33,14 +33,15 @@ input[type='range'] {
 }
 
 .toolbtn {
-  width: 42px;
-  height: 42px;
+  width: 44px;
+  height: 44px;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 10px;
   color: #94a3b8;
   transition: all 0.15s;
+  touch-action: manipulation;
 }
 
 .toolbtn:hover {
@@ -106,6 +107,7 @@ input[type='range'] {
   font-weight: 700;
   transition: all 0.15s;
   cursor: pointer;
+  touch-action: manipulation;
 }
 
 .btn-amber {
@@ -223,5 +225,152 @@ input[type='range'] {
     box-shadow: none !important;
     max-width: none !important;
     border-radius: 0 !important;
+  }
+}
+
+/* ═══ КНОПКА САЙДБАРА (только мобильные) ═══ */
+#btnSidebar {
+  display: none;
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 20;
+  width: 44px;
+  height: 44px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid #1e293b;
+  color: #e2e8f0;
+  font-size: 20px;
+  font-weight: 800;
+  touch-action: manipulation;
+}
+
+#sbBackdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 49;
+}
+
+#sbBackdrop.sb-open {
+  display: block;
+}
+
+/* ═══ МОБИЛЬНАЯ ВЁРСТКА (<768px) ═══ */
+@media (max-width: 767px) {
+  header {
+    height: auto;
+    flex-wrap: wrap;
+    padding: 6px 8px;
+    gap: 6px;
+  }
+
+  header .text-\[10px\] {
+    display: none;
+  }
+
+  header .leading-tight {
+    line-height: 1.15;
+  }
+
+  header .btn {
+    min-height: 36px;
+    padding: 6px 9px;
+    font-size: 12px;
+  }
+
+  #btnSample .btn-ghost,
+  #btnSample {
+    font-size: 0;
+  }
+
+  #tabs {
+    order: 3;
+    width: 100%;
+    margin: 0;
+    overflow-x: auto;
+    justify-content: flex-start;
+    gap: 2px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .tab {
+    padding: 9px 12px;
+    font-size: 12px;
+    min-height: 38px;
+    flex-shrink: 0;
+  }
+
+  /* Тулбар компактнее, канвас на весь экран */
+  #view-scheme #toolbar {
+    width: 48px;
+  }
+
+  /* Сайдбар — выезжающая шторка */
+  #view-scheme aside {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: min(88vw, 340px);
+    transform: translateX(105%);
+    transition: transform 0.22s ease;
+    z-index: 50;
+    background: #0b1120;
+    box-shadow: -12px 0 40px rgba(0, 0, 0, 0.55);
+  }
+
+  #view-scheme aside.sb-open {
+    transform: none;
+  }
+
+  #btnSidebar {
+    display: flex;
+  }
+
+  /* Тач-таргеты ≥44px */
+  .btn {
+    min-height: 44px;
+  }
+
+  .inp {
+    min-height: 44px;
+    padding: 10px 12px;
+    font-size: 14px;
+  }
+
+  select.inp {
+    min-height: 44px;
+  }
+
+  /* Статус-бар компактнее */
+  #canvasWrap .absolute.bottom-0 {
+    gap: 8px;
+    padding: 0 8px;
+  }
+
+  #stHint {
+    display: none;
+  }
+
+  .kpi {
+    padding: 12px;
+  }
+
+  .kpi .v {
+    font-size: 22px;
+  }
+
+  /* КП-лист на мобильном без лишних отступов */
+  #view-proposal {
+    padding: 8px !important;
+  }
+
+  #paper {
+    padding: 16px !important;
   }
 }

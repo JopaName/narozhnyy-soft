@@ -41,6 +41,7 @@
     <div class="w-14 shrink-0 border-r border-slate-800 bg-slate-900/60 flex flex-col items-center py-3 gap-1" id="toolbar"></div>
     <div class="flex-1 relative min-w-0 bg-slate-950" id="canvasWrap">
       <canvas id="cv" class="absolute inset-0 w-full h-full"></canvas>
+      <button id="btnSidebar" title="Параметры">⚙</button>
       <button id="btnMapUse" class="btn btn-amber absolute bottom-12 left-1/2 -translate-x-1/2 z-10" style="display:none">📌 Использовать место</button>
       <div id="emptyState" class="absolute inset-0 flex items-center justify-center pointer-events-none">
         <div class="card p-8 text-center max-w-sm pointer-events-auto">
@@ -358,6 +359,7 @@
   </div>
 </main>
 <div id="toast"></div>
+<div id="sbBackdrop"></div>
 
 <!-- ══ ПРОЕКТЫ ══ -->
 <div id="pr-modal" class="fixed inset-0 z-50 flex items-center justify-center" style="display:none;background:rgba(0,0,0,.7)">
