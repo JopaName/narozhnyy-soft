@@ -5,8 +5,74 @@ import { el, fmtHour, nf } from '../core/utils';
 import { orthSnap, roofBBox, validRect } from '../domain/geometry';
 import { currentShadowScene } from '../domain/solar';
 import { getBgImage } from '../ui/bg';
+import { ensureTile, getCachedTile } from '../ui/map-browser';
 import { ctx, cv, dpr } from './canvas';
 import { m2s } from './view';
+
+const WORLD_METERS = 40075016.686;
+
+function drawMapMode(W: number, H: number): void {
+  const mm = R.mapMode!;
+  const z = Math.max(1, Math.min(20, mm.zoom));
+  const n = Math.pow(2, z);
+  /* мировые метры видимой области */
+  const wx0 = -R.view.ox / R.view.s;
+  const wy0 = -R.view.oy / R.view.s;
+  const wx1 = (W - R.view.ox) / R.view.s;
+  const wy1 = (H - R.view.oy) / R.view.s;
+  const tx0 = Math.floor((wx0 / WORLD_METERS) * n);
+  const ty0 = Math.floor((wy0 / WORLD_METERS) * n);
+  const tx1 = Math.floor((wx1 / WORLD_METERS) * n);
+  const ty1 = Math.floor((wy1 / WORLD_METERS) * n);
+  const regionId = mm.regionId;
+
+  ctx.fillStyle = '#1a1d23';
+  ctx.fillRect(0, 0, W, H);
+
+  for (let ty = ty0; ty <= ty1; ty++) {
+    if (ty < 0 || ty >= n) continue;
+    for (let tx = tx0; tx <= tx1; tx++) {
+      if (tx < 0 || tx >= n) continue;
+      const key = regionId + '/' + z + '/' + tx + '/' + ty;
+      const img = getCachedTile(key);
+      /* Позиция тайла: мировые метры → экран */
+      const tileW = WORLD_METERS / n;
+      const sx = tx * tileW * R.view.s + R.view.ox;
+      const sy = ty * tileW * R.view.s + R.view.oy;
+      const size = tileW * R.view.s;
+      if (img) {
+        ctx.drawImage(img, sx, sy, size + 0.5, size + 0.5);
+      } else {
+        ctx.fillStyle = '#262a31';
+        ctx.fillRect(sx, sy, size + 1, size + 1);
+        ensureTile(regionId, z, tx, ty);
+      }
+    }
+  }
+
+  /* Маркер в центре */
+  const cx = W / 2;
+  const cy = H / 2;
+  ctx.strokeStyle = '#f59e0b';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(cx, cy, 12, 0, 7);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(cx, cy - 22);
+  ctx.lineTo(cx, cy - 8);
+  ctx.moveTo(cx, cy + 8);
+  ctx.lineTo(cx, cy + 22);
+  ctx.moveTo(cx - 22, cy);
+  ctx.lineTo(cx - 8, cy);
+  ctx.moveTo(cx + 8, cy);
+  ctx.lineTo(cx + 22, cy);
+  ctx.stroke();
+  ctx.fillStyle = '#f59e0b';
+  ctx.font = '700 11px Manrope';
+  ctx.textAlign = 'center';
+  ctx.fillText(mm.lat.toFixed(5) + ', ' + mm.lng.toFixed(5), cx, cy + 34);
+}
 
 export function draw(): void {
   if (!cv.width) return;
@@ -17,6 +83,14 @@ export function draw(): void {
   ctx.clearRect(0, 0, W, H);
   ctx.fillStyle = '#020617';
   ctx.fillRect(0, 0, W, H);
+
+  if (R.mapMode) {
+    drawMapMode(W, H);
+    ctx.restore();
+    el('stCoords').textContent = R.mapMode.lat.toFixed(5) + '° ; ' + R.mapMode.lng.toFixed(5) + '°';
+    el('stZoom').textContent = 'z' + R.mapMode.zoom;
+    return;
+  }
 
   /* Фон: фото крыши */
   const bgImg = getBgImage();

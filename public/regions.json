@@ -1,0 +1,28 @@
+{
+  "regions": [
+    {
+      "id": "gelendzhik",
+      "name": "Геленджик (демо-пакет)",
+      "bbox": [38.00, 44.53, 38.16, 44.62],
+      "minZoom": 12,
+      "maxZoom": 16,
+      "streetsFile": "regions/gelendzhik-streets.json"
+    },
+    {
+      "id": "krasnodar-krai",
+      "name": "Краснодарский край (большой, ~1-2 ГБ)",
+      "bbox": [36.50, 43.80, 41.90, 46.80],
+      "minZoom": 10,
+      "maxZoom": 15,
+      "streetsFile": ""
+    },
+    {
+      "id": "rostov",
+      "name": "Ростов-на-Дону (область)",
+      "bbox": [39.40, 47.00, 40.10, 47.40],
+      "minZoom": 11,
+      "maxZoom": 15,
+      "streetsFile": ""
+    }
+  ]
+}

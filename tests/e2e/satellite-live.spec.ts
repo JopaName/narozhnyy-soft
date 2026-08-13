@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 test('реальный спутник: Геленджик, ул. Десантная 44б', async ({ page }) => {
+  test.skip(process.env.RUN_LIVE !== '1', 'тяжёлый live-тест: запускать с RUN_LIVE=1');
   await page.goto('http://localhost:5173');
   await page.evaluate(() => localStorage.clear());
   await page.goto('http://localhost:5173');

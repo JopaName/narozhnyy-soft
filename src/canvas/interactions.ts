@@ -6,6 +6,7 @@ import { clamp, el, nf, num0, toast } from '../core/utils';
 import { computeRowRects, orthSnap, panelDims, panelsInRect, pruneInvalid, selfIntersects, validRect } from '../domain/geometry';
 import { setTool, updateOrthUI } from '../ui/toolbar';
 import { handleCalibClick } from '../ui/bg';
+import { closeMapMode, syncMapCenterFromView } from '../ui/map-browser';
 import { cv } from './canvas';
 import { draw } from './renderer';
 import { s2m } from './view';
@@ -118,6 +119,11 @@ function handleDown(e: PointerEvent): void {
     return;
   }
   const m = s2m(e);
+  if (R.mapMode) {
+    /* В режиме карты любой драг — панорама */
+    R.drag = { type: 'pan', sx: e.clientX, sy: e.clientY, ox: R.view.ox, oy: R.view.oy };
+    return;
+  }
   if (R.spaceDown) {
     /* Space+драг — панорама в любом инструменте */
     R.drag = { type: 'pan', sx: e.clientX, sy: e.clientY, ox: R.view.ox, oy: R.view.oy };
@@ -259,6 +265,7 @@ function handleMove(e: PointerEvent): void {
     case 'pan':
       R.view.ox = d.ox + (e.clientX - d.sx);
       R.view.oy = d.oy + (e.clientY - d.sy);
+      if (R.mapMode) syncMapCenterFromView();
       draw();
       break;
     case 'paint':
@@ -520,6 +527,7 @@ export function setupCanvasInteractions(): void {
       R.view.ox = px - ((px - R.view.ox) * ns) / R.view.s;
       R.view.oy = py - ((py - R.view.oy) * ns) / R.view.s;
       R.view.s = ns;
+      if (R.mapMode) syncMapCenterFromView();
       draw();
     },
     { passive: false },
@@ -570,6 +578,10 @@ export function setupCanvasInteractions(): void {
       toast('Прямые углы: ' + (state.orth ? 'вкл' : 'выкл'));
     }
     if (k === 'escape') {
+      if (R.mapMode) {
+        closeMapMode();
+        return;
+      }
       state.tempRoof = [];
       R.sel = null;
       R.calib = null;

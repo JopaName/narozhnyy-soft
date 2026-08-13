@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { latLngToTile, metersPerPixel, pixelsPerMeter } from '../../src/core/satellite';
+import {
+  latLngToTile,
+  mercatorToMeters,
+  metersPerPixel,
+  metersToMercator,
+  pixelsPerMeter,
+  tileZoomForScale,
+} from '../../src/core/satellite';
 
 describe('latLngToTile', () => {
   it('экватор/нулевой меридиан, zoom 1', () => {
@@ -65,5 +72,41 @@ describe('metersPerPixel / pixelsPerMeter', () => {
 
   it('увеличение зума в 2 раза уменьшает метр на пиксель в 2 раза', () => {
     expect(metersPerPixel(0, 5)).toBeCloseTo(metersPerPixel(0, 4) / 2, 9);
+  });
+});
+
+describe('mercatorToMeters / metersToMercator', () => {
+  it('обратное преобразование: круг по Геленджику', () => {
+    const m = mercatorToMeters(44.5583, 38.0749);
+    const back = metersToMercator(m.x, m.y);
+    expect(back.lat).toBeCloseTo(44.5583, 6);
+    expect(back.lng).toBeCloseTo(38.0749, 6);
+  });
+
+  it('круг по Москве и экватору', () => {
+    for (const [lat, lng] of [
+      [55.7558, 37.6173],
+      [0, 0],
+      [-33.87, 151.21],
+    ] as const) {
+      const m = mercatorToMeters(lat, lng);
+      const back = metersToMercator(m.x, m.y);
+      expect(back.lat).toBeCloseTo(lat, 6);
+      expect(back.lng).toBeCloseTo(lng, 6);
+    }
+  });
+});
+
+describe('tileZoomForScale', () => {
+  it('восстанавливает зум из масштаба', () => {
+    const lat = 44.56;
+    const z = 15;
+    const ppm = pixelsPerMeter(lat, z);
+    expect(tileZoomForScale(ppm, lat)).toBe(15);
+  });
+
+  it('зум 19 на широте 45°', () => {
+    const ppm = pixelsPerMeter(45, 19);
+    expect(tileZoomForScale(ppm, 45)).toBe(19);
   });
 });

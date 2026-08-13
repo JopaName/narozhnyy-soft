@@ -6,11 +6,16 @@ import { getActiveId, flushSave } from '../core/projects';
 import { geocodeAddress } from '../core/geocode';
 import { downloadSatelliteImage } from '../core/satellite';
 import { cv, dpr } from '../canvas/canvas';
+import { openMapMode } from './map-browser';
 
 let bgImg: HTMLImageElement | null = null;
 
 export function getBgImage(): HTMLImageElement | null {
   return bgImg;
+}
+
+export function setBgImage(img: HTMLImageElement | null): void {
+  bgImg = img;
 }
 
 export function loadBgForProject(projectId: string): void {
@@ -200,6 +205,22 @@ export function setupBg(): void {
     }
     const zoom = parseInt(el<HTMLSelectElement>('selSatZoom').value, 10) || 19;
     void loadSatelliteFromAddress(addr, zoom);
+  };
+  el('btnMap').onclick = () => {
+    const addr = el<HTMLInputElement>('inAddr').value.trim();
+    if (!addr) {
+      /* Карта откроется на последнем месте или Геленджике */
+      void openMapMode(44.5583, 38.0749);
+      return;
+    }
+    void geocodeAddress(addr).then((geo) => {
+      if (geo) {
+        el<HTMLInputElement>('inAddr').value = geo.name;
+        void openMapMode(geo.lat, geo.lng);
+      } else {
+        void openMapMode(44.5583, 38.0749);
+      }
+    });
   };
   el<HTMLInputElement>('chkBg').onchange = (e) => {
     state.bg.visible = (e.target as HTMLInputElement).checked;

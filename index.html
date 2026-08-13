@@ -41,6 +41,7 @@
     <div class="w-14 shrink-0 border-r border-slate-800 bg-slate-900/60 flex flex-col items-center py-3 gap-1" id="toolbar"></div>
     <div class="flex-1 relative min-w-0 bg-slate-950" id="canvasWrap">
       <canvas id="cv" class="absolute inset-0 w-full h-full"></canvas>
+      <button id="btnMapUse" class="btn btn-amber absolute bottom-12 left-1/2 -translate-x-1/2 z-10" style="display:none">📌 Использовать место</button>
       <div id="emptyState" class="absolute inset-0 flex items-center justify-center pointer-events-none">
         <div class="card p-8 text-center max-w-sm pointer-events-auto">
           <div class="text-3xl mb-3">📐</div>
@@ -124,9 +125,14 @@
             <input type="checkbox" id="chkBg" class="w-4 h-4 accent-amber-500"> Показывать
           </label>
         </div>
-        <div class="flex gap-2 mb-2">
-          <input class="inp flex-1 text-[12px]" id="inAddr" placeholder="Адрес или место (напр. Краснодар, ул. Красная 1)">
+        <div class="relative flex gap-2 mb-2">
+          <div class="relative flex-1">
+            <input class="inp flex-1 text-[12px]" id="inAddr" placeholder="Адрес или место (напр. Краснодар, ул. Красная 1)" autocomplete="off">
+            <div id="addrSuggest" class="absolute left-0 right-0 top-full mt-1 bg-slate-900 border border-slate-700 rounded-xl p-1 z-30 space-y-0.5" style="display:none"></div>
+          </div>
           <button class="btn btn-amber justify-center text-[12px] px-3 shrink-0" id="btnSat" title="Снимок со спутника">🛰</button>
+          <button class="btn btn-ghost justify-center text-[12px] px-3 shrink-0" id="btnMap" title="Оффлайн-карта">🗺</button>
+          <button class="btn btn-ghost justify-center text-[12px] px-3 shrink-0" id="btnMapManager" title="Скачать оффлайн-карты">⬇</button>
         </div>
         <div class="flex items-center gap-2 mb-2">
           <span class="text-[11px] text-slate-500">Масштаб:</span>
@@ -364,6 +370,20 @@
     <div class="p-4 border-t border-slate-800 shrink-0 flex gap-2">
       <button class="btn btn-amber flex-1 justify-center" id="pr-new">+ Новый проект</button>
       <button class="btn btn-ghost flex-1 justify-center" id="pr-import">📂 Импорт JSON</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ ОФФЛАЙН-КАРТЫ ══ -->
+<div id="map-modal" class="fixed inset-0 z-50 flex items-center justify-center" style="display:none;background:rgba(0,0,0,.7)">
+  <div class="card w-full max-w-xl max-h-[85vh] flex flex-col m-4">
+    <div class="flex items-center justify-between p-4 border-b border-slate-800 shrink-0">
+      <div class="font-extrabold text-white text-lg">⬇ Оффлайн-карты</div>
+      <button id="map-close" class="text-slate-400 hover:text-white text-xl leading-none w-8 h-8 flex items-center justify-center">&times;</button>
+    </div>
+    <div class="flex-1 overflow-y-auto p-4 space-y-2" id="map-region-list"></div>
+    <div class="p-4 border-t border-slate-800 shrink-0 text-[11px] text-slate-500">
+      Скачанные тайлы хранятся в приложении и работают без интернета. Спутниковые снимки: © Esri, Maxar, Earthstar Geographics.
     </div>
   </div>
 </div>

@@ -24,6 +24,9 @@ import { state } from './core/state';
 import { setupVariants, setOpenProjectHook } from './ui/variants';
 import { openProjectRecord } from './ui/app';
 import { storageInit } from './core/native-storage';
+import { setupAddrAutocomplete } from './ui/addr-autocomplete';
+import { setupMapManager } from './ui/map-manager';
+import { setupMapButtons } from './ui/map-browser';
 
 events.refresh = refresh;
 events.draw = draw;
@@ -55,6 +58,9 @@ async function init(): Promise<void> {
     setupProjects();
     setupBg();
     setupVariants();
+    setupMapManager();
+    setupMapButtons();
+    setupAddrAutocomplete();
     setOpenProjectHook(openProjectRecord);
     setLoadSampleHook(loadSample);
     setTool('select');

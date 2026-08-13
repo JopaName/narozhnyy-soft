@@ -27,6 +27,7 @@ export const R = {
   multi: [] as number[],
   marquee: null as { x1: number; y1: number; x2: number; y2: number } | null,
   spaceDown: false as boolean,
+  mapMode: null as { lat: number; lng: number; zoom: number; regionId: string } | null,
 };
 
 export const events = {

@@ -25,6 +25,29 @@ export function pixelsPerMeter(lat: number, z: number): number {
   return 1 / metersPerPixel(lat, z);
 }
 
+const WORLD_METERS = 40075016.686;
+
+/** Web Mercator: lat/lng → мировые метры */
+export function mercatorToMeters(lat: number, lng: number): { x: number; y: number } {
+  const latRad = (lat * Math.PI) / 180;
+  const y = (1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2;
+  return { x: ((lng + 180) / 360) * WORLD_METERS, y: y * WORLD_METERS };
+}
+
+/** Web Mercator: мировые метры → lat/lng */
+export function metersToMercator(x: number, y: number): { lat: number; lng: number } {
+  const lng = (x / WORLD_METERS) * 360 - 180;
+  const n = Math.PI - (2 * Math.PI * y) / WORLD_METERS;
+  const lat = (180 / Math.PI) * Math.atan(Math.sinh(n));
+  return { lat, lng };
+}
+
+/** Тайловый зум, соответствующий масштабу канваса view.s (px/м) на данной широте */
+export function tileZoomForScale(pxPerM: number, lat: number): number {
+  /* pxPerM = 2^z / (156543.03392·cos(lat)) → z = log2(pxPerM · 156543.03392 · cos(lat)) */
+  return Math.round(Math.log2(pxPerM * EQUATOR_METERS_PER_PIXEL * Math.cos((lat * Math.PI) / 180)));
+}
+
 export interface SatelliteImage {
   dataUrl: string;
   /** Положение искомой точки в склеенном изображении, px */
