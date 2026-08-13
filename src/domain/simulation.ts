@@ -34,6 +34,15 @@ export function stringCalc(overrides?: Partial<AppState>): StringCalcResult | nu
   };
 }
 
+/** Индекс панели → номер стринга (0-based). Панели раскладываются рядами — стринг = подряд идущие. */
+export function stringAssignments(): Map<number, number> | null {
+  const sc = stringCalc();
+  if (!sc) return null;
+  const map = new Map<number, number>();
+  for (let i = 0; i < sc.N; i++) map.set(i, Math.floor(i / sc.per));
+  return map;
+}
+
 export function simulate(overrides?: Partial<AppState>) {
   const s = resolveState(overrides);
   const city = CITIES[s.city] || CITIES.krasnodar;

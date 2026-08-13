@@ -97,8 +97,23 @@ export function panelDims(): { w: number; h: number } {
 
 export function validRect(r: Rect, ignore = -1): boolean {
   if (!r || !isFinite(r.x) || !isFinite(r.y) || r.w <= 0 || r.h <= 0) return false;
-  if (!state.roof.length || !rectInPoly(r, state.roof)) return false;
-  if (state.obstacles.some((o) => rectsOverlap(r, o))) return false;
+  if (!state.roof.length || !rotatedRectInPoly(r, state.arrayAngle, state.roof)) return false;
+  /* препятствия — в мировых координатах: SAT против повёрнутых углов */
+  if (state.arrayAngle !== 0) {
+    const corners = panelWorldCorners(r, state.arrayAngle);
+    for (const o of state.obstacles) {
+      const oc = [
+        { x: o.x, y: o.y },
+        { x: o.x + o.w, y: o.y },
+        { x: o.x + o.w, y: o.y + o.h },
+        { x: o.x, y: o.y + o.h },
+      ];
+      if (satOverlap(corners, oc)) return false;
+    }
+  } else {
+    if (state.obstacles.some((o) => rectsOverlap(r, o))) return false;
+  }
+  /* все панели в одном (локальном) пространстве — обычное пересечение */
   return !state.panels.some((p, i) => i !== ignore && rectsOverlap(r, p));
 }
 
@@ -115,6 +130,106 @@ export function roofBBox(): { minX: number; minY: number; maxX: number; maxY: nu
     b = Math.min(b, p.y);
     c = Math.max(c, p.x);
     d = Math.max(d, p.y);
+  });
+  return { minX: a, minY: b, maxX: c, maxY: d };
+}
+
+/* ═══ ПОВОРОТ МАССИВА ═══
+ * Панели хранятся в локальных координатах массива (axis-aligned),
+ * мир = R(arrayAngle) · локальная точка. */
+
+const DEG2RAD = Math.PI / 180;
+
+export function worldToLocal(p: Point, angleDeg: number): Point {
+  const rad = -angleDeg * DEG2RAD;
+  return { x: p.x * Math.cos(rad) - p.y * Math.sin(rad), y: p.x * Math.sin(rad) + p.y * Math.cos(rad) };
+}
+
+export function localToWorld(p: Point, angleDeg: number): Point {
+  const rad = angleDeg * DEG2RAD;
+  return { x: p.x * Math.cos(rad) - p.y * Math.sin(rad), y: p.x * Math.sin(rad) + p.y * Math.cos(rad) };
+}
+
+/** Мировые координаты углов повёрнутой панели (локальный r) */
+export function panelWorldCorners(r: Rect, angleDeg: number): Point[] {
+  const out: Point[] = [];
+  for (const [lx, ly] of [
+    [0, 0],
+    [r.w, 0],
+    [r.w, r.h],
+    [0, r.h],
+  ] as const) {
+    out.push(localToWorld({ x: r.x + lx, y: r.y + ly }, angleDeg));
+  }
+  return out;
+}
+
+/** Повёрнутый прямоугольник внутри полигона: углы + центр + середины рёбер */
+export function rotatedRectInPoly(r: Rect, angleDeg: number, poly: Point[]): boolean {
+  const pts: Point[] = [];
+  const samples: [number, number][] = [
+    [0, 0],
+    [r.w, 0],
+    [r.w, r.h],
+    [0, r.h],
+    [r.w / 2, r.h / 2],
+    [r.w / 2, 0],
+    [0, r.h / 2],
+    [r.w, r.h / 2],
+    [r.w / 2, r.h],
+  ];
+  for (const [lx, ly] of samples) {
+    pts.push(localToWorld({ x: r.x + lx, y: r.y + ly }, angleDeg));
+  }
+  return pts.every((p) => pointInPoly(p.x, p.y, poly));
+}
+
+/** Разделяющие оси (SAT): два выпуклых полигона пересекаются? */
+export function satOverlap(c1: Point[], c2: Point[]): boolean {
+  const axes: Point[] = [];
+  const collect = (c: Point[]) => {
+    for (let i = 0; i < c.length; i++) {
+      const a = c[i];
+      const b = c[(i + 1) % c.length];
+      const e = { x: b.x - a.x, y: b.y - a.y };
+      axes.push({ x: -e.y, y: e.x });
+    }
+  };
+  collect(c1);
+  collect(c2);
+  for (const ax of axes) {
+    const len = Math.hypot(ax.x, ax.y);
+    if (len < 1e-9) continue;
+    const nx = ax.x / len;
+    const ny = ax.y / len;
+    let mn1 = Infinity;
+    let mx1 = -Infinity;
+    let mn2 = Infinity;
+    let mx2 = -Infinity;
+    for (const p of c1) {
+      const d = p.x * nx + p.y * ny;
+      mn1 = Math.min(mn1, d);
+      mx1 = Math.max(mx1, d);
+    }
+    for (const p of c2) {
+      const d = p.x * nx + p.y * ny;
+      mn2 = Math.min(mn2, d);
+      mx2 = Math.max(mx2, d);
+    }
+    if (mx1 < mn2 - 1e-9 || mx2 < mn1 - 1e-9) return false;
+  }
+  return true;
+}
+
+/** Локальный bbox точек полигона (для автораскладки по повёрнутой сетке) */
+export function localPolyBBox(poly: Point[], angleDeg: number): { minX: number; minY: number; maxX: number; maxY: number } {
+  let a = 1e9, b = 1e9, c = -1e9, d = -1e9;
+  poly.forEach((p) => {
+    const l = worldToLocal(p, angleDeg);
+    a = Math.min(a, l.x);
+    b = Math.min(b, l.y);
+    c = Math.max(c, l.x);
+    d = Math.max(d, l.y);
   });
   return { minX: a, minY: b, maxX: c, maxY: d };
 }

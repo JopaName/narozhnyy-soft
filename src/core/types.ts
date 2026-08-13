@@ -92,6 +92,8 @@ export interface AppState {
     calibS: number;
     addr: string;
   };
+  arrayAngle: number;
+  showStrings: boolean;
 }
 
 export interface ViewState {
@@ -111,7 +113,7 @@ export type DragState =
   | { type: 'paint'; last: Point }
   | { type: 'erase' }
   | { type: 'newOb'; sx: number; sy: number }
-  | { type: 'panel'; i: number; dx: number; dy: number; sx: number; sy: number }
+  | { type: 'panel'; i: number; lmx: number; lmy: number; sx: number; sy: number }
   | { type: 'obstacle'; i: number; dx: number; dy: number }
   | { type: 'vertex'; i: number; roofSnap: string }
   | { type: 'row'; anchor: Rect }

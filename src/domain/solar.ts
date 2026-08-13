@@ -4,7 +4,7 @@ import { state } from '../core/state';
 import type { AppState, Point } from '../core/types';
 import { clamp } from '../core/utils';
 import { resolveState } from './simulation';
-import { hull, pointInPoly } from './geometry';
+import { hull, panelWorldCorners, pointInPoly } from './geometry';
 
 export interface SunPos {
   alt: number;
@@ -60,6 +60,18 @@ export function computeShading(overrides?: Partial<AppState>): number[] {
     if (!overrides) state.shadeLoss = loss;
     return loss;
   }
+  /* Углы панелей в мировых координатах (массив может быть повёрнут) + их bbox */
+  const panelData = s.panels.map((p) => {
+    const pts = panelWorldCorners(p, s.arrayAngle);
+    let a = 1e9, b = 1e9, c = -1e9, d2 = -1e9;
+    pts.forEach((q) => {
+      a = Math.min(a, q.x);
+      b = Math.min(b, q.y);
+      c = Math.max(c, q.x);
+      d2 = Math.max(d2, q.y);
+    });
+    return { pts, bb: { a, b, c, d: d2 } };
+  });
   const city = CITIES[s.city] || CITIES.krasnodar;
   const coarse = s.panels.length > 600;
   const hours = coarse ? [7, 9, 11, 13, 15, 17] : [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18];
@@ -97,30 +109,30 @@ export function computeShading(overrides?: Partial<AppState>): number[] {
         shps.push({ poly: hp, bb: { a, b, c, d: d2 } });
       }
       let tot = 0;
-      for (const p of s.panels) {
+      for (const pd of panelData) {
         let hit = false;
         for (const sh of shps) {
-          if (!(p.x + p.w <= sh.bb.a || sh.bb.c <= p.x || p.y + p.h <= sh.bb.b || sh.bb.d <= p.y)) {
+          if (!(pd.bb.c <= sh.bb.a || sh.bb.c <= pd.bb.a || pd.bb.d <= sh.bb.b || sh.bb.d <= pd.bb.b)) {
             hit = true;
             break;
           }
         }
         if (!hit) continue;
-        const cx = p.x + p.w / 2;
-        const cy = p.y + p.h / 2;
-        const ptsTest: number[][] = coarse
-          ? [[cx, cy]]
-          : [[cx, cy], [p.x, p.y], [p.x + p.w, p.y], [p.x, p.y + p.h], [p.x + p.w, p.y + p.h]];
-        let shCount = 0;
-        for (const t of ptsTest) {
-          for (const sh of shps) {
-            if (pointInPoly(t[0], t[1], sh.poly)) {
-              shCount++;
+        const ptsTest: Point[] = coarse ? [pd.pts[0], pd.pts[2]] : pd.pts;
+        /* центр + углы (для coarse — пара углов) */
+        const testPts = coarse
+          ? [midPoint(pd.pts[0], pd.pts[2])]
+          : [midPoint(pd.pts[0], pd.pts[2]), pd.pts[0], pd.pts[1], pd.pts[2], pd.pts[3]];
+        let sh = 0;
+        for (const t of testPts) {
+          for (const shPoly of shps) {
+            if (pointInPoly(t.x, t.y, shPoly.poly)) {
+              sh++;
               break;
             }
           }
         }
-        tot += shCount / ptsTest.length;
+        tot += sh / testPts.length;
       }
       const wgt = Math.sin(sp.alt);
       lSum += wgt * (tot / s.panels.length);
@@ -130,6 +142,10 @@ export function computeShading(overrides?: Partial<AppState>): number[] {
   }
   if (!overrides) state.shadeLoss = loss;
   return loss;
+}
+
+function midPoint(a: Point, b: Point): Point {
+  return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
 }
 
 let shadeTimer: ReturnType<typeof setTimeout> | null = null;

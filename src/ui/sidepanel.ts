@@ -1,7 +1,7 @@
 import { BATTERIES, CITIES, INVERTERS, PANELS } from '../core/data';
 import { commit, events, R } from '../core/runtime';
 import { state } from '../core/state';
-import { queueSave } from '../core/projects';
+import { queueSave, flushSave } from '../core/projects';
 import { azLabel, clamp, el, fmtHour, nf, toast } from '../core/utils';
 import { rotateSel } from '../canvas/interactions';
 import { draw } from '../canvas/renderer';
@@ -58,6 +58,9 @@ export function syncInputs(): void {
   el<HTMLSelectElement>('selShadeMonth').value = String(state.shadeMonth);
   el<HTMLInputElement>('rngHour').value = String(state.shadeHour);
   el('lblHour').textContent = fmtHour(state.shadeHour);
+  el<HTMLInputElement>('inAngle').value = String(state.arrayAngle);
+  el('valAngle').textContent = state.arrayAngle + '°';
+  el<HTMLInputElement>('chkStrings').checked = state.showStrings;
   updateOrthUI();
   syncBgUI();
 }
@@ -109,6 +112,20 @@ export function bindInputs(): void {
     state.showShadows = (e.target as HTMLInputElement).checked;
     draw();
   };
+  el<HTMLInputElement>('chkStrings').onchange = (e) => {
+    state.showStrings = (e.target as HTMLInputElement).checked;
+    flushSave();
+    draw();
+  };
+  el('inAngle').addEventListener('input', (e) => {
+    state.arrayAngle = +(e.target as HTMLInputElement).value;
+    el('valAngle').textContent = state.arrayAngle + '°';
+    draw();
+  });
+  el('inAngle').addEventListener('change', () => {
+    autoLayout();
+    flushSave();
+  });
   el<HTMLInputElement>('chkOrth').onchange = (e) => {
     state.orth = (e.target as HTMLInputElement).checked;
     updateOrthUI();

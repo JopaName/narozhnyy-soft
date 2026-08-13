@@ -37,4 +37,6 @@ export const defaultState: AppState = {
     calibS: 0,
     addr: '',
   },
+  arrayAngle: 0,
+  showStrings: false,
 };

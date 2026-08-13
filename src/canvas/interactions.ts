@@ -3,7 +3,7 @@ import { commit, events, R, redo, undo } from '../core/runtime';
 import { state } from '../core/state';
 import type { Point } from '../core/types';
 import { clamp, el, nf, num0, toast } from '../core/utils';
-import { computeRowRects, orthSnap, panelDims, panelsInRect, pruneInvalid, selfIntersects, validRect } from '../domain/geometry';
+import { computeRowRects, orthSnap, panelDims, panelsInRect, pruneInvalid, selfIntersects, validRect, worldToLocal } from '../domain/geometry';
 import { setTool, updateOrthUI } from '../ui/toolbar';
 import { handleCalibClick } from '../ui/bg';
 import { closeMapMode, syncMapCenterFromView } from '../ui/map-browser';
@@ -13,9 +13,11 @@ import { s2m } from './view';
 
 /* ═══ ХИТЫ ═══ */
 export function hitPanel(m: Point): number {
+  /* курсор в мировых координатах → локальные координаты массива */
+  const lm = worldToLocal(m, state.arrayAngle);
   for (let i = state.panels.length - 1; i >= 0; i--) {
     const p = state.panels[i];
-    if (m.x >= p.x - 1e-9 && m.x <= p.x + p.w + 1e-9 && m.y >= p.y - 1e-9 && m.y <= p.y + p.h + 1e-9) return i;
+    if (lm.x >= p.x - 1e-9 && lm.x <= p.x + p.w + 1e-9 && lm.y >= p.y - 1e-9 && lm.y <= p.y + p.h + 1e-9) return i;
   }
   return -1;
 }
@@ -42,8 +44,9 @@ export function tryPaint(m: Point): void {
     R.drag = null;
     return;
   }
+  const lm = worldToLocal(m, state.arrayAngle);
   const d = panelDims();
-  const r = { x: Math.round(m.x / 0.25) * 0.25, y: Math.round(m.y / 0.25) * 0.25, w: d.w, h: d.h };
+  const r = { x: Math.round(lm.x / 0.25) * 0.25, y: Math.round(lm.y / 0.25) * 0.25, w: d.w, h: d.h };
   if (validRect(r)) {
     state.panels.push(r);
     draw();
@@ -166,10 +169,11 @@ function handleDown(e: PointerEvent): void {
   }
   if (state.tool === 'row') {
     R.ghostPanel = null;
+    const lm = worldToLocal(m, state.arrayAngle);
     const d = panelDims();
     const anchor = {
-      x: Math.round(m.x / 0.25) * 0.25,
-      y: Math.round(m.y / 0.25) * 0.25,
+      x: Math.round(lm.x / 0.25) * 0.25,
+      y: Math.round(lm.y / 0.25) * 0.25,
       w: d.w,
       h: d.h,
     };
@@ -199,11 +203,11 @@ function handleDown(e: PointerEvent): void {
   const pi = hitPanel(m);
   if (pi >= 0) {
     if (R.multi.includes(pi)) {
-      /* тащим всю группу */
+      /* тащим всю группу (локальные координаты) */
       R.sel = null;
       R.drag = {
         type: 'multi',
-        start: m,
+        start: worldToLocal(m, state.arrayAngle),
         snaps: R.multi.map((i) => ({ x: state.panels[i].x, y: state.panels[i].y })),
       };
       draw();
@@ -212,11 +216,12 @@ function handleDown(e: PointerEvent): void {
     }
     R.multi = [];
     R.sel = { type: 'panel', i: pi };
+    const lm = worldToLocal(m, state.arrayAngle);
     R.drag = {
       type: 'panel',
       i: pi,
-      dx: m.x - state.panels[pi].x,
-      dy: m.y - state.panels[pi].y,
+      lmx: lm.x,
+      lmy: lm.y,
       sx: state.panels[pi].x,
       sy: state.panels[pi].y,
     };
@@ -249,8 +254,9 @@ function handleMove(e: PointerEvent): void {
 
   /* Ghost-превью одиночной панели при наведении (без драга) */
   if (state.tool === 'panel' && !R.drag) {
+    const lm = worldToLocal(R.cursorM, state.arrayAngle);
     const d = panelDims();
-    const r = { x: Math.round(R.cursorM.x / 0.25) * 0.25, y: Math.round(R.cursorM.y / 0.25) * 0.25, w: d.w, h: d.h };
+    const r = { x: Math.round(lm.x / 0.25) * 0.25, y: Math.round(lm.y / 0.25) * 0.25, w: d.w, h: d.h };
     R.ghostPanel = { ...r, valid: validRect(r) };
     draw();
   } else if (R.ghostPanel) {
@@ -281,14 +287,16 @@ function handleMove(e: PointerEvent): void {
       break;
     case 'row': {
       const gap = clamp(num0(state.gap), 0, 2);
-      const rects = computeRowRects(d.anchor, m, gap);
+      const lm = worldToLocal(m, state.arrayAngle);
+      const rects = computeRowRects(d.anchor, lm, gap);
       R.ghostRow = { rects: rects.map((r) => ({ ...r, valid: validRect(r) })) };
       draw();
       break;
     }
     case 'multi': {
-      const dx = m.x - d.start.x;
-      const dy = m.y - d.start.y;
+      const lm = worldToLocal(m, state.arrayAngle);
+      const dx = lm.x - d.start.x;
+      const dy = lm.y - d.start.y;
       R.multi.forEach((pi, k) => {
         const p = state.panels[pi];
         if (p && d.snaps[k]) {
@@ -306,8 +314,9 @@ function handleMove(e: PointerEvent): void {
     case 'panel': {
       const p = state.panels[d.i];
       if (p) {
-        p.x = Math.round((m.x - d.dx) / 0.1) * 0.1;
-        p.y = Math.round((m.y - d.dy) / 0.1) * 0.1;
+        const lm = worldToLocal(m, state.arrayAngle);
+        p.x = Math.round((d.sx + (lm.x - d.lmx)) / 0.1) * 0.1;
+        p.y = Math.round((d.sy + (lm.y - d.lmy)) / 0.1) * 0.1;
         draw();
       }
       break;
@@ -395,7 +404,18 @@ function handleUp(e: PointerEvent): void {
     if (x2 - x1 < 0.3 && y2 - y1 < 0.3) {
       R.multi = []; /* простой клик — сброс выделения */
     } else {
-      R.multi = panelsInRect(state.panels, { x: x1, y: y1, w: x2 - x1, h: y2 - y1 });
+      /* рамка в мировых координатах → локальный bbox массива */
+      const corners = [
+        worldToLocal({ x: x1, y: y1 }, state.arrayAngle),
+        worldToLocal({ x: x2, y: y1 }, state.arrayAngle),
+        worldToLocal({ x: x2, y: y2 }, state.arrayAngle),
+        worldToLocal({ x: x1, y: y2 }, state.arrayAngle),
+      ];
+      const lx1 = Math.min(...corners.map((c) => c.x));
+      const ly1 = Math.min(...corners.map((c) => c.y));
+      const lx2 = Math.max(...corners.map((c) => c.x));
+      const ly2 = Math.max(...corners.map((c) => c.y));
+      R.multi = panelsInRect(state.panels, { x: lx1, y: ly1, w: lx2 - lx1, h: ly2 - ly1 });
       if (R.multi.length) toast('Выделено панелей: ' + R.multi.length);
     }
   }

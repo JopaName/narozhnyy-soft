@@ -13,7 +13,7 @@ import {
 import { clamp, el, nf, toast } from '../core/utils';
 import { polyArea } from '../domain/geometry';
 import { computeShading } from '../domain/solar';
-import { simulate } from '../domain/simulation';
+import { simulate, stringCalc } from '../domain/simulation';
 import { fitView } from '../canvas/view';
 import { resizeCanvas } from '../canvas/canvas';
 import { draw } from '../canvas/renderer';
@@ -65,6 +65,13 @@ export function refresh(): void {
   const obSel = R.sel && R.sel.type === 'obstacle' ? state.obstacles[R.sel.i] : null;
   el('obZRow').classList.toggle('hidden', !obSel);
   if (obSel && document.activeElement !== el('inObZ')) el<HTMLInputElement>('inObZ').value = String(obSel.z || 1);
+  /* Инфо о выбранной панели: номер и стринг */
+  if (R.sel && R.sel.type === 'panel') {
+    const sc = stringCalc();
+    if (sc) {
+      el('stTool').textContent = 'Панель ' + (R.sel.i + 1) + ' · Стринг ' + (Math.floor(R.sel.i / sc.per) + 1) + '/' + sc.strings;
+    }
+  }
   renderBattery();
   renderStrings();
   renderLoan();

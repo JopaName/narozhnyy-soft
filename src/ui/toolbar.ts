@@ -3,7 +3,7 @@ import { commit, events, R, redo, undo } from '../core/runtime';
 import { state } from '../core/state';
 import type { Tool } from '../core/types';
 import { clamp, el, num0, toast } from '../core/utils';
-import { panelDims, rectInPoly, rectsOverlap, roofBBox } from '../domain/geometry';
+import { panelDims, localPolyBBox, validRect } from '../domain/geometry';
 import { cv } from '../canvas/canvas';
 import { fitView } from '../canvas/view';
 
@@ -127,14 +127,15 @@ export function autoLayout(): void {
   const d = panelDims();
   const gap = clamp(num0(state.gap), 0, 2);
   const mg = clamp(num0(state.margin), 0, 3);
-  const bb = roofBBox();
+  /* сетка идёт по локальному bbox крыши (массив может быть повёрнут) */
+  const bb = localPolyBBox(state.roof, state.arrayAngle);
   state.panels = [];
   let guard = 0;
   for (let y = bb.minY + mg; y + d.h <= bb.maxY - mg + 1e-6 && guard < MAX_PANELS + 10; y += d.h + gap + 1e-9) {
     for (let x = bb.minX + mg; x + d.w <= bb.maxX - mg + 1e-6 && guard < MAX_PANELS + 10; x += d.w + gap + 1e-9) {
       guard++;
       const r = { x, y, w: d.w, h: d.h };
-      if (rectInPoly(r, state.roof) && !state.obstacles.some((o) => rectsOverlap(r, o))) state.panels.push(r);
+      if (validRect(r)) state.panels.push(r);
     }
   }
   if (state.panels.length > MAX_PANELS) {

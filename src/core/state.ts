@@ -41,6 +41,8 @@ export const state: AppState = {
     calibS: 0,
     addr: '',
   },
+  arrayAngle: 0,
+  showStrings: false,
 };
 
 const okPt = (p: unknown): p is Point => !!p && typeof p === 'object' && isFinite((p as Point).x) && isFinite((p as Point).y);
@@ -90,6 +92,8 @@ export function sanitize(o: Record<string, unknown>): AppState {
     calibS: Math.max(0, parseFloat(String(bgRaw.calibS)) || 0),
     addr: typeof bgRaw.addr === 'string' ? bgRaw.addr.slice(0, 120) : '',
   };
+  s.arrayAngle = clamp(parseFloat(String(o.arrayAngle)) || 0, -45, 45);
+  s.showStrings = o.showStrings === true;
   return s;
 }
 

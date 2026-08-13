@@ -11,15 +11,18 @@ import { listVariants } from '../core/projects';
 export function snapshot(): string {
   try {
     if (cv.width > 0) {
-      /* Фото крыши не попадает в КП */
+      /* Фото крыши и раскраска стрингов не попадают в КП */
       const wasVisible = state.bg.visible;
-      if (wasVisible) {
+      const wasStrings = state.showStrings;
+      if (wasVisible || wasStrings) {
         state.bg.visible = false;
+        state.showStrings = false;
         draw();
       }
       const dataUrl = cv.toDataURL('image/png');
-      if (wasVisible) {
-        state.bg.visible = true;
+      if (wasVisible || wasStrings) {
+        state.bg.visible = wasVisible;
+        state.showStrings = wasStrings;
         draw();
       }
       return dataUrl;

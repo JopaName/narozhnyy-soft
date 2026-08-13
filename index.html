@@ -77,8 +77,16 @@
           <div><div class="text-[11px] text-slate-500 mb-1">Зазор, м</div><input type="number" step="0.05" min="0" max="2" class="inp" id="inGap" value="0.05"></div>
           <div><div class="text-[11px] text-slate-500 mb-1">Отступ от края, м</div><input type="number" step="0.1" min="0" max="3" class="inp" id="inMargin" value="0.4"></div>
         </div>
+        <div class="mb-3">
+          <div class="flex justify-between text-[11px] text-slate-500 mb-1"><span>Поворот массива</span><b id="valAngle" class="text-white">0°</b></div>
+          <input type="range" min="-45" max="45" step="1" class="w-full" id="inAngle" value="0">
+          <div class="text-[10px] text-slate-600 mt-1">При отпускании — раскладка пересчитывается под угол крыши</div>
+        </div>
         <button class="btn btn-amber w-full justify-center" id="btnAuto">⚡ Автораскладка</button>
         <label class="flex items-center gap-2 text-[12px] font-bold text-slate-300 cursor-pointer mt-3">
+          <input type="checkbox" id="chkStrings" class="w-4 h-4 accent-amber-500"> Стринги цветом
+        </label>
+        <label class="flex items-center gap-2 text-[12px] font-bold text-slate-300 cursor-pointer mt-2">
           <input type="checkbox" id="chkOrth" class="w-4 h-4 accent-amber-500" checked> Прямые углы при рисовании крыши <span class="text-slate-500 font-semibold">(Alt — свободно)</span>
         </label>
       </div>

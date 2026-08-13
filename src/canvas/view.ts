@@ -2,6 +2,7 @@ import { events, R } from '../core/runtime';
 import { state } from '../core/state';
 import type { Point } from '../core/types';
 import { clamp } from '../core/utils';
+import { panelWorldCorners } from '../domain/geometry';
 import { cv, dpr } from './canvas';
 
 export const m2s = (x: number, y: number): [number, number] => [x * R.view.s + R.view.ox, y * R.view.s + R.view.oy];
@@ -14,8 +15,12 @@ export function s2m(e: { clientX: number; clientY: number }): Point {
 export function fitView(): void {
   const pts: Point[] = [...state.roof];
   state.panels.forEach((p) => {
-    pts.push({ x: p.x, y: p.y });
-    pts.push({ x: p.x + p.w, y: p.y + p.h });
+    if (state.arrayAngle !== 0) {
+      panelWorldCorners(p, state.arrayAngle).forEach((c) => pts.push(c));
+    } else {
+      pts.push({ x: p.x, y: p.y });
+      pts.push({ x: p.x + p.w, y: p.y + p.h });
+    }
   });
   if (!pts.length) {
     R.view = { s: 22, ox: 80, oy: 60 };

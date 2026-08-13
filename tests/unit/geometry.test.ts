@@ -4,8 +4,10 @@ import {
   ccw,
   computeRowRects,
   hull,
+  localToWorld,
   orthSnap,
   panelDims,
+  panelWorldCorners,
   panelsInRect,
   pointInPoly,
   polyArea,
@@ -13,9 +15,12 @@ import {
   rectInPoly,
   rectsOverlap,
   roofBBox,
+  rotatedRectInPoly,
+  satOverlap,
   segCross,
   selfIntersects,
   validRect,
+  worldToLocal,
 } from '../../src/domain/geometry';
 import { defaultState } from './_setup';
 
@@ -363,5 +368,98 @@ describe('panelsInRect', () => {
   it('частичное попадание не считается', () => {
     const idx = panelsInRect(panels, { x: 0.5, y: -0.5, w: 2, h: 2 });
     expect(idx).toEqual([]);
+  });
+});
+
+describe('поворот массива', () => {
+  it('worldToLocal/localToWorld — взаимообратны', () => {
+    for (const ang of [0, 15, -30, 45]) {
+      const p = { x: 7.3, y: -2.1 };
+      const back = localToWorld(worldToLocal(p, ang), ang);
+      expect(back.x).toBeCloseTo(p.x, 9);
+      expect(back.y).toBeCloseTo(p.y, 9);
+    }
+  });
+
+  it('panelWorldCorners при 0° = axis-aligned углы', () => {
+    const c = panelWorldCorners({ x: 2, y: 3, w: 2, h: 1 }, 0);
+    expect(c).toEqual([
+      { x: 2, y: 3 },
+      { x: 4, y: 3 },
+      { x: 4, y: 4 },
+      { x: 2, y: 4 },
+    ]);
+  });
+
+  it('panelWorldCorners при 90° поворачивает углы', () => {
+    const c = panelWorldCorners({ x: 0, y: 0, w: 2, h: 1 }, 90);
+    /* (2,0) → (0,2), (2,1) → (-1,2), (0,1) → (-1,0) */
+    expect(c[1].x).toBeCloseTo(0, 6);
+    expect(c[1].y).toBeCloseTo(2, 6);
+    expect(c[2].x).toBeCloseTo(-1, 6);
+    expect(c[2].y).toBeCloseTo(2, 6);
+  });
+
+  it('rotatedRectInPoly: повёрнутый квадрат внутри полигона', () => {
+    const big = [
+      { x: -10, y: -10 },
+      { x: 10, y: -10 },
+      { x: 10, y: 10 },
+      { x: -10, y: 10 },
+    ];
+    expect(rotatedRectInPoly({ x: -1, y: -1, w: 2, h: 2 }, 30, big)).toBe(true);
+    expect(rotatedRectInPoly({ x: 9, y: 9, w: 2, h: 2 }, 0, big)).toBe(false);
+  });
+
+  it('satOverlap: пересечение повёрнутого и axis-aligned', () => {
+    const rot = panelWorldCorners({ x: 0, y: 0, w: 2, h: 2 }, 45);
+    const ax = [
+      { x: 1, y: 1 },
+      { x: 3, y: 1 },
+      { x: 3, y: 3 },
+      { x: 1, y: 3 },
+    ];
+    expect(satOverlap(rot, ax)).toBe(true);
+    const far = [
+      { x: 10, y: 10 },
+      { x: 12, y: 10 },
+      { x: 12, y: 12 },
+      { x: 10, y: 12 },
+    ];
+    expect(satOverlap(rot, far)).toBe(false);
+  });
+
+  it('validRect с повёрнутым массивом: внутри крыши — да, вне — нет', () => {
+    state.roof = [
+      { x: 0, y: 0 },
+      { x: 10, y: 0 },
+      { x: 10, y: 10 },
+      { x: 0, y: 10 },
+    ];
+    state.obstacles = [];
+    state.panels = [];
+    state.arrayAngle = 20;
+    /* (2,2,1×2) при 20° весь внутри */
+    expect(validRect({ x: 2, y: 2, w: 1, h: 2 })).toBe(true);
+    /* угол (8,8) при повороте выходит за y=10 */
+    expect(validRect({ x: 6, y: 6, w: 2, h: 2 })).toBe(false);
+    state.arrayAngle = 0;
+    expect(validRect({ x: 6, y: 6, w: 2, h: 2 })).toBe(true);
+  });
+
+  it('validRect: повёрнутая панель не пересекает препятствие (SAT)', () => {
+    state.roof = [
+      { x: 0, y: 0 },
+      { x: 10, y: 0 },
+      { x: 10, y: 10 },
+      { x: 0, y: 10 },
+    ];
+    state.arrayAngle = 15;
+    state.panels = [];
+    /* панель (3,3,2×2) при 15° в мире занимает x 1.6..4.05, y 3.67..6.13 */
+    state.obstacles = [{ x: 2.5, y: 4, w: 1, h: 1, z: 2 }];
+    expect(validRect({ x: 3, y: 3, w: 2, h: 2 })).toBe(false);
+    state.obstacles = [{ x: 8, y: 8, w: 1, h: 1, z: 2 }];
+    expect(validRect({ x: 3, y: 3, w: 2, h: 2 })).toBe(true);
   });
 });

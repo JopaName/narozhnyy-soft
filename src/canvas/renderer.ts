@@ -2,12 +2,15 @@ import { MONTHS } from '../core/data';
 import { events, R } from '../core/runtime';
 import { state } from '../core/state';
 import { el, fmtHour, nf } from '../core/utils';
-import { orthSnap, roofBBox, validRect } from '../domain/geometry';
+import { localToWorld, orthSnap, roofBBox, validRect } from '../domain/geometry';
 import { currentShadowScene } from '../domain/solar';
+import { stringAssignments } from '../domain/simulation';
 import { getBgImage } from '../ui/bg';
 import { ensureTile, getCachedTile } from '../ui/map-browser';
 import { ctx, cv, dpr } from './canvas';
 import { m2s } from './view';
+
+const STRING_PALETTE = ['#f59e0b', '#38bdf8', '#22c55e', '#a78bfa', '#f87171', '#2dd4bf', '#fbbf24', '#e879f9', '#818cf8', '#fb923c'];
 
 const WORLD_METERS = 40075016.686;
 
@@ -243,72 +246,110 @@ export function draw(): void {
     ctx.setLineDash([]);
   }
 
+  const angleRad = (state.arrayAngle * Math.PI) / 180;
+  const assignments = state.showStrings ? stringAssignments() : null;
   state.panels.forEach((p, i) => {
-    const [px, py] = m2s(p.x, p.y);
+    const w0 = localToWorld({ x: p.x, y: p.y }, state.arrayAngle);
+    const [px, py] = m2s(w0.x, w0.y);
     const pw = p.w * R.view.s - 1;
     const ph = p.h * R.view.s - 1;
     if (pw <= 0 || ph <= 0) return;
-    const gr = ctx.createLinearGradient(px, py, px, py + ph);
+    ctx.save();
+    ctx.translate(px, py);
+    ctx.rotate(angleRad);
+    const gr = ctx.createLinearGradient(0, 0, 0, ph);
     gr.addColorStop(0, '#1e3a8a');
     gr.addColorStop(1, '#0c1f4a');
     ctx.fillStyle = gr;
-    ctx.fillRect(px, py, pw, ph);
+    ctx.fillRect(0, 0, pw, ph);
     if (R.view.s > 10) {
       ctx.strokeStyle = 'rgba(148,163,184,.25)';
       ctx.lineWidth = 1;
       for (let cIdx = 1; cIdx < 6; cIdx++) {
         ctx.beginPath();
-        ctx.moveTo(px + (pw * cIdx) / 6, py);
-        ctx.lineTo(px + (pw * cIdx) / 6, py + ph);
+        ctx.moveTo((pw * cIdx) / 6, 0);
+        ctx.lineTo((pw * cIdx) / 6, ph);
         ctx.stroke();
       }
       ctx.beginPath();
-      ctx.moveTo(px, py + ph / 2);
-      ctx.lineTo(px + pw, py + ph / 2);
+      ctx.moveTo(0, ph / 2);
+      ctx.lineTo(pw, ph / 2);
       ctx.stroke();
     }
     const isSel = R.sel && R.sel.type === 'panel' && R.sel.i === i;
     const inMulti = R.multi.includes(i);
     let stroke = isSel || inMulti ? '#fbbf24' : '#64748b';
     if (isSel && !validRect(p, i)) stroke = '#f87171';
+    if (assignments && !isSel && !inMulti) {
+      const str = assignments.get(i);
+      if (str !== undefined) stroke = STRING_PALETTE[str % STRING_PALETTE.length];
+    }
     ctx.strokeStyle = stroke;
-    ctx.lineWidth = isSel ? 2.5 : inMulti ? 2 : 1.2;
+    ctx.lineWidth = isSel ? 2.5 : inMulti ? 2 : 1.4;
     if (isSel || inMulti) {
       ctx.shadowColor = stroke;
       ctx.shadowBlur = 10;
     }
-    ctx.strokeRect(px, py, pw, ph);
+    ctx.strokeRect(0, 0, pw, ph);
     ctx.shadowBlur = 0;
+    ctx.restore();
   });
+
+  /* Легенда стрингов */
+  if (assignments) {
+    let maxStr = 0;
+    assignments.forEach((s) => {
+      if (s > maxStr) maxStr = s;
+    });
+    ctx.font = '700 11px Manrope';
+    ctx.textAlign = 'left';
+    for (let s = 0; s <= maxStr; s++) {
+      const y = 16 + s * 22;
+      ctx.fillStyle = STRING_PALETTE[s % STRING_PALETTE.length];
+      ctx.fillRect(16, y, 12, 12);
+      ctx.fillStyle = '#cbd5e1';
+      ctx.fillText('Стринг ' + (s + 1), 34, y + 10);
+    }
+  }
 
   /* Ghost-превью одиночной панели */
   if (R.ghostPanel) {
     const g = R.ghostPanel;
-    const [px, py] = m2s(g.x, g.y);
+    const w0 = localToWorld({ x: g.x, y: g.y }, state.arrayAngle);
+    const [px, py] = m2s(w0.x, w0.y);
+    ctx.save();
+    ctx.translate(px, py);
+    ctx.rotate(angleRad);
     const pw = g.w * R.view.s - 1;
     const ph = g.h * R.view.s - 1;
     ctx.fillStyle = g.valid ? 'rgba(34,197,94,.16)' : 'rgba(248,113,113,.16)';
-    ctx.fillRect(px, py, pw, ph);
+    ctx.fillRect(0, 0, pw, ph);
     ctx.setLineDash([5, 3]);
     ctx.strokeStyle = g.valid ? '#22c55e' : '#f87171';
     ctx.lineWidth = 1.5;
-    ctx.strokeRect(px, py, pw, ph);
+    ctx.strokeRect(0, 0, pw, ph);
     ctx.setLineDash([]);
+    ctx.restore();
   }
 
   /* Ghost-превью ряда */
   if (R.ghostRow) {
     R.ghostRow.rects.forEach((g) => {
-      const [px, py] = m2s(g.x, g.y);
+      const w0 = localToWorld({ x: g.x, y: g.y }, state.arrayAngle);
+      const [px, py] = m2s(w0.x, w0.y);
+      ctx.save();
+      ctx.translate(px, py);
+      ctx.rotate(angleRad);
       const pw = g.w * R.view.s - 1;
       const ph = g.h * R.view.s - 1;
       ctx.fillStyle = g.valid ? 'rgba(34,197,94,.14)' : 'rgba(248,113,113,.14)';
-      ctx.fillRect(px, py, pw, ph);
+      ctx.fillRect(0, 0, pw, ph);
       ctx.setLineDash([5, 3]);
       ctx.strokeStyle = g.valid ? '#22c55e' : '#f87171';
       ctx.lineWidth = 1.5;
-      ctx.strokeRect(px, py, pw, ph);
+      ctx.strokeRect(0, 0, pw, ph);
       ctx.setLineDash([]);
+      ctx.restore();
     });
   }
 
