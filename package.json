@@ -1,6 +1,6 @@
 {
   "name": "narozhnyy-soft",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "private": true,
   "type": "module",
   "description": "Solar Studio — проектирование СЭС (Narozhnyy Soft)",
@@ -22,6 +22,7 @@
     "@capacitor/android": "^8.5.0",
     "@capacitor/cli": "^8.5.0",
     "@capacitor/core": "^8.5.0",
+    "@capacitor/filesystem": "^8.1.2",
     "@fontsource/manrope": "^5.3.0",
     "chart.js": "^4.4.9",
     "html2canvas": "^1.4.1",

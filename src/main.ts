@@ -23,6 +23,7 @@ import { setupBg } from './ui/bg';
 import { state } from './core/state';
 import { setupVariants, setOpenProjectHook } from './ui/variants';
 import { openProjectRecord } from './ui/app';
+import { storageInit } from './core/native-storage';
 
 events.refresh = refresh;
 events.draw = draw;
@@ -40,6 +41,7 @@ function populateSelects(): void {
 
 async function init(): Promise<void> {
   try {
+    await storageInit();
     await loadEquipment();
     loadOverrides();
     populateSelects();

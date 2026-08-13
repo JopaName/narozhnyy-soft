@@ -3,6 +3,7 @@ import type { BatteryData, BomItem, InverterData, PanelData } from '../core/type
 import { el, nf, toast } from '../core/utils';
 import { events } from '../core/runtime';
 import { state } from '../core/state';
+import { storageGet, storageSet } from '../core/native-storage';
 
 type EqType = 'panels' | 'inverters' | 'batteries' | 'bom';
 let currentTab: EqType = 'panels';
@@ -26,7 +27,7 @@ let edited = snapshot();
 
 function persist(): void {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(edited));
+    storageSet(STORAGE_KEY, JSON.stringify(edited));
   } catch {
     /* ignore */
   }
@@ -34,7 +35,7 @@ function persist(): void {
 
 export function loadOverrides(): void {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = storageGet(STORAGE_KEY);
     if (!raw) return;
     const data = JSON.parse(raw) as {
       panels?: PanelData[];

@@ -1,6 +1,7 @@
 import { PANELS } from './data';
 import { sanitize, state, toPersistable } from './state';
 import type { VariantRecord } from './types';
+import { storageGet, storageRemove, storageSet } from './native-storage';
 
 export interface ProjectRecord {
   id: string;
@@ -24,7 +25,7 @@ let store: ProjectsStore = { activeId: '', list: [] };
 
 function loadStore(): ProjectsStore {
   try {
-    const raw = localStorage.getItem(STORE_KEY);
+    const raw = storageGet(STORE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw) as ProjectsStore;
       if (Array.isArray(parsed.list)) {
@@ -43,7 +44,7 @@ function loadStore(): ProjectsStore {
 
 function saveStore(): void {
   try {
-    localStorage.setItem(STORE_KEY, JSON.stringify(store));
+    storageSet(STORE_KEY, JSON.stringify(store));
   } catch {
     /* ignore */
   }
@@ -53,7 +54,7 @@ export function initProjects(): void {
   store = loadStore();
   /* Миграция старого одиночного проекта */
   try {
-    const legacy = localStorage.getItem(LEGACY_KEY);
+    const legacy = storageGet(LEGACY_KEY);
     if (legacy) {
       const data = JSON.parse(legacy) as Record<string, unknown>;
       const rec = makeRecord(
@@ -62,7 +63,7 @@ export function initProjects(): void {
       );
       store.list.push(rec);
       store.activeId = rec.id;
-      localStorage.removeItem(LEGACY_KEY);
+      storageRemove(LEGACY_KEY);
       saveStore();
     }
   } catch {

@@ -87,11 +87,16 @@ gh release view v1.0.x # → в релизе есть SolarStudio.apk
 
 ## 5. Совместимость данных
 
-Проекты клиентов хранятся в localStorage (`solarstudio_v2` — список проектов) + IndexedDB (`solarstudio-db` — фото крыш).
-- **Новые версии обязаны читать старые сохранения** (формат схемы менять только обратно-совместимо)
-- `sanitize()` в `src/core/state.ts` — защитный слой: любые поля валидируются
-- Фото крыш НЕ хранить в localStorage — только IndexedDB по id проекта
-- При удалении проекта — удалять и его фото из IndexedDB
+**Хранилище — абстракция `src/core/native-storage.ts` с двумя бэкендами:**
+- **web (dev/браузер):** localStorage (`solarstudio_v2` — проекты, `equipment_override` — каталог) + IndexedDB (фото)
+- **native (APK):** Capacitor Filesystem, файлы в `Directory.Data` + `.bak`-копии; фото в `images/<id>`
+
+- **Все обращения к хранилищу ТОЛЬКО через `storageGet/storageSet/storageRemove`** (не raw localStorage) — иначе данные в APK потеряются
+- При старте: `storageInit()` гидрирует кэш (файл → .bak → legacy localStorage — миграция старых данных клиентов)
+- Запись — debounce 600 мс + немедленный флаш при `visibilitychange` (сворачивание приложения)
+- Проекты клиентов обязаны читать старые сохранения (формат менять только обратно-совместимо)
+- `sanitize()` в `src/core/state.ts` — защитный слой
+- При удалении проекта — удалять и его фото
 
 ## 6. Git и безопасность
 
