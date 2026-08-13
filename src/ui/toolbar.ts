@@ -14,6 +14,8 @@ const ICONS: Record<string, string> = {
     '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 8l6-4 8 3 2 9-9 4-7-5 0-7z"/></svg>',
   panel:
     '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="1"/><path d="M9 5v14M15 5v14M3 12h18"/></svg>',
+  row:
+    '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="8" width="5" height="8" rx="1"/><rect x="9" y="8" width="5" height="8" rx="1"/><rect x="16" y="8" width="5" height="8" rx="1"/></svg>',
   obstacle:
     '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="1"/><path d="M7 7l10 10M17 7L7 17"/></svg>',
   erase:
@@ -30,14 +32,16 @@ const TOOL_NAMES: Record<Tool, string> = {
   select: 'Выбор',
   roof: 'Крыша',
   panel: 'Панель',
+  row: 'Ряд панелей',
   obstacle: 'Препятствие',
   erase: 'Ластик',
 };
 
 const HINTS: Record<Tool, string> = {
-  select: 'тяните панели, препятствия и вершины; пустое место — панорама',
+  select: 'рамка — выделить группу; тяните панели и вершины; Space или средняя кнопка — панорама',
   roof: 'клики/касания — точки; ⊥ прямые углы (Alt — свободно); двойной тап — замкнуть',
-  panel: 'тяните мышью или пальцем, закрашивая крышу панелями',
+  panel: 'наведение показывает превью панели; тяните мышью или пальцем, закрашивая крышу',
+  row: 'клик — одна панель; тяните — ровный ряд вдоль направления, встанет до препятствия',
   obstacle: 'растяните прямоугольник (труба, люк, дерево)',
   erase: 'коснитесь панели или препятствия, чтобы удалить',
 };
@@ -48,6 +52,7 @@ export function buildToolbar(): void {
     ['select', 'Выбор (V)'],
     ['roof', 'Контур крыши (R)'],
     ['panel', 'Панель (P)'],
+    ['row', 'Ряд панелей (F)'],
     ['obstacle', 'Препятствие (O)'],
     ['erase', 'Ластик (E)'],
   ];
@@ -99,6 +104,10 @@ export function updateOrthUI(): void {
 
 export function setTool(t: Tool): void {
   state.tool = t;
+  R.multi = [];
+  R.ghostPanel = null;
+  R.ghostRow = null;
+  R.marquee = null;
   document.querySelectorAll('.toolbtn').forEach((b) => {
     const elBtn = b as HTMLElement;
     elBtn.classList.toggle('active', elBtn.dataset.tool === t);

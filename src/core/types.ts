@@ -16,7 +16,7 @@ export interface Obstacle extends Rect {
 
 export interface PanelRect extends Rect {}
 
-export type Tool = 'select' | 'roof' | 'panel' | 'obstacle' | 'erase';
+export type Tool = 'select' | 'roof' | 'panel' | 'row' | 'obstacle' | 'erase';
 export type Orientation = 'portrait' | 'landscape';
 export type Financing = 'cash' | 'loan';
 
@@ -113,6 +113,9 @@ export type DragState =
   | { type: 'panel'; i: number; dx: number; dy: number; sx: number; sy: number }
   | { type: 'obstacle'; i: number; dx: number; dy: number }
   | { type: 'vertex'; i: number; roofSnap: string }
+  | { type: 'row'; anchor: Rect }
+  | { type: 'multi'; start: Point; snaps: Point[] }
+  | { type: 'marquee'; sx: number; sy: number }
   | null;
 
 export interface FinResult {

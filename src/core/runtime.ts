@@ -22,6 +22,11 @@ export const R = {
   activeTab: 'scheme' as string,
   sim: null as SimResult | null,
   calib: null as { stage: 1 | 2; p1: Point | null } | null,
+  ghostPanel: null as ({ x: number; y: number; w: number; h: number; valid: boolean } | null),
+  ghostRow: null as { rects: { x: number; y: number; w: number; h: number; valid: boolean }[] } | null,
+  multi: [] as number[],
+  marquee: null as { x1: number; y1: number; x2: number; y2: number } | null,
+  spaceDown: false as boolean,
 };
 
 export const events = {

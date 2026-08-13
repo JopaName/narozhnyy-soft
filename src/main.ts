@@ -6,7 +6,7 @@ import '@fontsource/manrope/cyrillic-700.css';
 import '@fontsource/manrope/cyrillic-800.css';
 
 import { BATTERIES, CITIES, INVERTERS, loadEquipment, MONTH_FULL, PANELS } from './core/data';
-import { events } from './core/runtime';
+import { events, R } from './core/runtime';
 import { el, nf, toast } from './core/utils';
 import { scheduleShading } from './domain/solar';
 import { initCanvasResizeObserver, resizeCanvas } from './canvas/canvas';
@@ -66,6 +66,7 @@ async function init(): Promise<void> {
     if (badge) badge.textContent = 'v' + APP_VERSION;
     startUpdateChecker();
     (window as unknown as Record<string, unknown>).__appState = state;
+    (window as unknown as Record<string, unknown>).__R = R;
   } catch (err) {
     console.error(err);
     toast('Ошибка инициализации');

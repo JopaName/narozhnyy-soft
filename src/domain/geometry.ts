@@ -118,3 +118,30 @@ export function roofBBox(): { minX: number; minY: number; maxX: number; maxY: nu
   });
   return { minX: a, minY: b, maxX: c, maxY: d };
 }
+
+/** Ряд панелей: от якоря вдоль доминирующей оси до точки `to` (включительно) */
+export function computeRowRects(anchor: Rect, to: Point, gap: number): Rect[] {
+  const horizontal = Math.abs(to.x - anchor.x) >= Math.abs(to.y - anchor.y);
+  const stepX = horizontal ? anchor.w + gap : 0;
+  const stepY = horizontal ? 0 : anchor.h + gap;
+  const len = horizontal ? to.x - anchor.x : to.y - anchor.y;
+  const step = horizontal ? stepX : stepY;
+  const sign = len >= 0 ? 1 : -1;
+  const count = Math.max(1, Math.floor(Math.abs(len) / Math.max(step, 1e-9)) + 1);
+  const rects: Rect[] = [];
+  for (let i = 0; i < count; i++) {
+    rects.push({ x: anchor.x + i * sign * stepX, y: anchor.y + i * sign * stepY, w: anchor.w, h: anchor.h });
+  }
+  return rects;
+}
+
+/** Индексы прямоугольников, целиком лежащих внутри r */
+export function panelsInRect(panels: Rect[], r: Rect): number[] {
+  const out: number[] = [];
+  panels.forEach((p, i) => {
+    if (p.x >= r.x - 1e-9 && p.x + p.w <= r.x + r.w + 1e-9 && p.y >= r.y - 1e-9 && p.y + p.h <= r.y + r.h + 1e-9) {
+      out.push(i);
+    }
+  });
+  return out;
+}

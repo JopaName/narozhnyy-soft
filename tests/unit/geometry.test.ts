@@ -2,9 +2,11 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { state } from '../../src/core/state';
 import {
   ccw,
+  computeRowRects,
   hull,
   orthSnap,
   panelDims,
+  panelsInRect,
   pointInPoly,
   polyArea,
   pruneInvalid,
@@ -301,5 +303,65 @@ describe('roofBBox', () => {
     expect(bb.minY).toBeCloseTo(3);
     expect(bb.maxX).toBeCloseTo(12);
     expect(bb.maxY).toBeCloseTo(13);
+  });
+});
+
+describe('computeRowRects', () => {
+  const anchor = { x: 0, y: 0, w: 2, h: 1 };
+  const gap = 0.2;
+
+  it('горизонтальный ряд вправо', () => {
+    const rects = computeRowRects(anchor, { x: 5, y: 0.3 }, gap);
+    expect(rects.length).toBeGreaterThan(1);
+    rects.forEach((r) => {
+      expect(r.y).toBe(0);
+      expect(r.w).toBe(2);
+      expect(r.h).toBe(1);
+    });
+    /* шаг = 2 + 0.2 = 2.2; до x=5 → floor(5/2.2)+1 = 3 */
+    expect(rects).toHaveLength(3);
+    expect(rects[1].x).toBeCloseTo(2.2);
+    expect(rects[2].x).toBeCloseTo(4.4);
+  });
+
+  it('ряд влево (отрицательное направление)', () => {
+    const rects = computeRowRects(anchor, { x: -5, y: 0 }, gap);
+    expect(rects.length).toBeGreaterThan(1);
+    expect(rects[1].x).toBeCloseTo(-2.2);
+  });
+
+  it('вертикальный ряд вниз', () => {
+    const rects = computeRowRects(anchor, { x: 0.1, y: 4 }, gap);
+    rects.forEach((r) => expect(r.x).toBe(0));
+    expect(rects[1].y).toBeCloseTo(1.2); /* шаг 1 + 0.2 */
+  });
+
+  it('клик без движения — одна панель (якорь)', () => {
+    const rects = computeRowRects(anchor, { x: 0, y: 0 }, gap);
+    expect(rects).toHaveLength(1);
+    expect(rects[0]).toEqual(anchor);
+  });
+});
+
+describe('panelsInRect', () => {
+  const panels = [
+    { x: 0, y: 0, w: 1, h: 1 },
+    { x: 2, y: 0, w: 1, h: 1 },
+    { x: 0, y: 2, w: 1, h: 1 },
+    { x: 10, y: 10, w: 1, h: 1 },
+  ];
+
+  it('выбирает только целиком попавшие', () => {
+    const idx = panelsInRect(panels, { x: -1, y: -1, w: 4, h: 4 });
+    expect(idx).toEqual([0, 1, 2]);
+  });
+
+  it('пустая рамка — пустой результат', () => {
+    expect(panelsInRect(panels, { x: 20, y: 20, w: 2, h: 2 })).toEqual([]);
+  });
+
+  it('частичное попадание не считается', () => {
+    const idx = panelsInRect(panels, { x: 0.5, y: -0.5, w: 2, h: 2 });
+    expect(idx).toEqual([]);
   });
 });

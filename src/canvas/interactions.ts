@@ -2,8 +2,8 @@ import { MAX_PANELS } from '../core/data';
 import { commit, events, R, redo, undo } from '../core/runtime';
 import { state } from '../core/state';
 import type { Point } from '../core/types';
-import { clamp, el, nf, toast } from '../core/utils';
-import { orthSnap, panelDims, pruneInvalid, selfIntersects, validRect } from '../domain/geometry';
+import { clamp, el, nf, num0, toast } from '../core/utils';
+import { computeRowRects, orthSnap, panelDims, panelsInRect, pruneInvalid, selfIntersects, validRect } from '../domain/geometry';
 import { setTool, updateOrthUI } from '../ui/toolbar';
 import { handleCalibClick } from '../ui/bg';
 import { cv } from './canvas';
@@ -14,7 +14,7 @@ import { s2m } from './view';
 export function hitPanel(m: Point): number {
   for (let i = state.panels.length - 1; i >= 0; i--) {
     const p = state.panels[i];
-    if (m.x >= p.x && m.x <= p.x + p.w && m.y >= p.y && m.y <= p.y + p.h) return i;
+    if (m.x >= p.x - 1e-9 && m.x <= p.x + p.w + 1e-9 && m.y >= p.y - 1e-9 && m.y <= p.y + p.h + 1e-9) return i;
   }
   return -1;
 }
@@ -22,7 +22,7 @@ export function hitPanel(m: Point): number {
 export function hitObstacle(m: Point): number {
   for (let i = state.obstacles.length - 1; i >= 0; i--) {
     const o = state.obstacles[i];
-    if (m.x >= o.x && m.x <= o.x + o.w && m.y >= o.y && m.y <= o.y + o.h) return i;
+    if (m.x >= o.x - 1e-9 && m.x <= o.x + o.w + 1e-9 && m.y >= o.y - 1e-9 && m.y <= o.y + o.h + 1e-9) return i;
   }
   return -1;
 }
@@ -118,6 +118,11 @@ function handleDown(e: PointerEvent): void {
     return;
   }
   const m = s2m(e);
+  if (R.spaceDown) {
+    /* Space+драг — панорама в любом инструменте */
+    R.drag = { type: 'pan', sx: e.clientX, sy: e.clientY, ox: R.view.ox, oy: R.view.oy };
+    return;
+  }
   if (state.tool === 'roof') {
     const now = performance.now();
     if (R.lastTap && now - R.lastTap.t < 350 && Math.hypot(e.clientX - R.lastTap.x, e.clientY - R.lastTap.y) < 25) {
@@ -148,8 +153,23 @@ function handleDown(e: PointerEvent): void {
   }
   R.lastTap = null;
   if (state.tool === 'panel') {
+    R.ghostPanel = null;
     R.drag = { type: 'paint', last: m };
     tryPaint(m);
+    return;
+  }
+  if (state.tool === 'row') {
+    R.ghostPanel = null;
+    const d = panelDims();
+    const anchor = {
+      x: Math.round(m.x / 0.25) * 0.25,
+      y: Math.round(m.y / 0.25) * 0.25,
+      w: d.w,
+      h: d.h,
+    };
+    R.drag = { type: 'row', anchor };
+    R.ghostRow = { rects: [{ ...anchor, valid: validRect(anchor) }] };
+    draw();
     return;
   }
   if (state.tool === 'obstacle') {
@@ -163,6 +183,7 @@ function handleDown(e: PointerEvent): void {
   }
   const vi = hitVertex(m);
   if (vi >= 0) {
+    R.multi = [];
     R.sel = { type: 'vertex', i: vi };
     R.drag = { type: 'vertex', i: vi, roofSnap: JSON.stringify(state.roof) };
     draw();
@@ -171,6 +192,19 @@ function handleDown(e: PointerEvent): void {
   }
   const pi = hitPanel(m);
   if (pi >= 0) {
+    if (R.multi.includes(pi)) {
+      /* тащим всю группу */
+      R.sel = null;
+      R.drag = {
+        type: 'multi',
+        start: m,
+        snaps: R.multi.map((i) => ({ x: state.panels[i].x, y: state.panels[i].y })),
+      };
+      draw();
+      events.refresh();
+      return;
+    }
+    R.multi = [];
     R.sel = { type: 'panel', i: pi };
     R.drag = {
       type: 'panel',
@@ -186,14 +220,18 @@ function handleDown(e: PointerEvent): void {
   }
   const oi = hitObstacle(m);
   if (oi >= 0) {
+    R.multi = [];
     R.sel = { type: 'obstacle', i: oi };
     R.drag = { type: 'obstacle', i: oi, dx: m.x - state.obstacles[oi].x, dy: m.y - state.obstacles[oi].y };
     draw();
     events.refresh();
     return;
   }
+  /* Пустое место — рамка группового выделения */
   R.sel = null;
-  R.drag = { type: 'pan', sx: e.clientX, sy: e.clientY, ox: R.view.ox, oy: R.view.oy };
+  R.multi = [];
+  R.drag = { type: 'marquee', sx: e.clientX, sy: e.clientY };
+  R.marquee = { x1: e.clientX, y1: e.clientY, x2: e.clientX, y2: e.clientY };
   draw();
   events.refresh();
 }
@@ -202,6 +240,18 @@ function handleMove(e: PointerEvent): void {
   R.cursorM = s2m(e);
   el('stCoords').textContent = nf(R.cursorM.x, 1) + ' ; ' + nf(R.cursorM.y, 1) + ' м';
   if (state.tool === 'roof' && state.tempRoof.length && !R.drag) draw();
+
+  /* Ghost-превью одиночной панели при наведении (без драга) */
+  if (state.tool === 'panel' && !R.drag) {
+    const d = panelDims();
+    const r = { x: Math.round(R.cursorM.x / 0.25) * 0.25, y: Math.round(R.cursorM.y / 0.25) * 0.25, w: d.w, h: d.h };
+    R.ghostPanel = { ...r, valid: validRect(r) };
+    draw();
+  } else if (R.ghostPanel) {
+    R.ghostPanel = null;
+    if (!R.drag) draw();
+  }
+
   if (!R.drag) return;
   const m = s2m(e);
   const d = R.drag;
@@ -220,6 +270,30 @@ function handleMove(e: PointerEvent): void {
       break;
     case 'newOb':
       R.ghostOb = { x: Math.min(d.sx, m.x), y: Math.min(d.sy, m.y), w: Math.abs(m.x - d.sx), h: Math.abs(m.y - d.sy) };
+      draw();
+      break;
+    case 'row': {
+      const gap = clamp(num0(state.gap), 0, 2);
+      const rects = computeRowRects(d.anchor, m, gap);
+      R.ghostRow = { rects: rects.map((r) => ({ ...r, valid: validRect(r) })) };
+      draw();
+      break;
+    }
+    case 'multi': {
+      const dx = m.x - d.start.x;
+      const dy = m.y - d.start.y;
+      R.multi.forEach((pi, k) => {
+        const p = state.panels[pi];
+        if (p && d.snaps[k]) {
+          p.x = Math.round((d.snaps[k].x + dx) / 0.1) * 0.1;
+          p.y = Math.round((d.snaps[k].y + dy) / 0.1) * 0.1;
+        }
+      });
+      draw();
+      break;
+    }
+    case 'marquee':
+      R.marquee = { x1: d.sx, y1: d.sy, x2: e.clientX, y2: e.clientY };
       draw();
       break;
     case 'panel': {
@@ -252,7 +326,7 @@ function handleMove(e: PointerEvent): void {
   }
 }
 
-function handleUp(): void {
+function handleUp(e: PointerEvent): void {
   if (!R.drag) return;
   const d = R.drag;
   if (d.type === 'newOb' && R.ghostOb && R.ghostOb.w > 0.2 && R.ghostOb.h > 0.2) {
@@ -266,6 +340,58 @@ function handleUp(): void {
     toast('Препятствие добавлено — задайте высоту в панели справа');
   }
   R.ghostOb = null;
+  if (d.type === 'row') {
+    if (R.ghostRow) {
+      let placed = 0;
+      for (const g of R.ghostRow.rects) {
+        if (state.panels.length >= MAX_PANELS) {
+          toast('Достигнут лимит ' + MAX_PANELS + ' панелей');
+          break;
+        }
+        const r = { x: g.x, y: g.y, w: g.w, h: g.h };
+        if (!validRect(r)) break; /* ряд встаёт до препятствия */
+        state.panels.push(r);
+        placed++;
+      }
+      R.ghostRow = null;
+      if (placed) toast('Панелей в ряду: ' + placed);
+      else toast('Позиция недоступна');
+    }
+  }
+  if (d.type === 'multi') {
+    let bad = false;
+    for (const pi of R.multi) {
+      const p = state.panels[pi];
+      if (!p || !validRect(p, pi)) {
+        bad = true;
+        break;
+      }
+    }
+    if (bad) {
+      R.multi.forEach((pi, k) => {
+        const p = state.panels[pi];
+        if (p && d.snaps[k]) {
+          p.x = d.snaps[k].x;
+          p.y = d.snaps[k].y;
+        }
+      });
+      toast('Позиция недоступна — группа возвращена');
+    }
+  }
+  if (d.type === 'marquee') {
+    const rect = cv.getBoundingClientRect();
+    const x1 = (Math.min(d.sx, e.clientX) - rect.left - R.view.ox) / R.view.s;
+    const y1 = (Math.min(d.sy, e.clientY) - rect.top - R.view.oy) / R.view.s;
+    const x2 = (Math.max(d.sx, e.clientX) - rect.left - R.view.ox) / R.view.s;
+    const y2 = (Math.max(d.sy, e.clientY) - rect.top - R.view.oy) / R.view.s;
+    R.marquee = null;
+    if (x2 - x1 < 0.3 && y2 - y1 < 0.3) {
+      R.multi = []; /* простой клик — сброс выделения */
+    } else {
+      R.multi = panelsInRect(state.panels, { x: x1, y: y1, w: x2 - x1, h: y2 - y1 });
+      if (R.multi.length) toast('Выделено панелей: ' + R.multi.length);
+    }
+  }
   if (d.type === 'panel') {
     const p = state.panels[d.i];
     if (p && !validRect(p, d.i)) {
@@ -300,6 +426,19 @@ function handleUp(): void {
 export function setupCanvasInteractions(): void {
   cv.addEventListener('pointerdown', (e) => {
     e.preventDefault();
+    /* Средняя кнопка — панорама */
+    if (e.pointerType === 'mouse' && e.button === 1) {
+      try {
+        cv.setPointerCapture(e.pointerId);
+      } catch {
+        /* ignore */
+      }
+      R.sel = null;
+      R.multi = [];
+      R.drag = { type: 'pan', sx: e.clientX, sy: e.clientY, ox: R.view.ox, oy: R.view.oy };
+      draw();
+      return;
+    }
     try {
       cv.setPointerCapture(e.pointerId);
     } catch {
@@ -310,6 +449,8 @@ export function setupCanvasInteractions(): void {
       R.drag = null;
       R.ghostOb = null;
       R.sel = null;
+      R.ghostRow = null;
+      R.marquee = null;
       const pts = [...R.pointers.values()];
       R.pinch = {
         d0: Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y) || 1,
@@ -350,7 +491,7 @@ export function setupCanvasInteractions(): void {
       if (R.pointers.size < 2) R.pinch = null;
       return;
     }
-    handleUp();
+    handleUp(e);
   };
   cv.addEventListener('pointerup', pointerEnd);
   cv.addEventListener('pointercancel', pointerEnd);
@@ -386,6 +527,8 @@ export function setupCanvasInteractions(): void {
 
   cv.addEventListener('mouseleave', () => {
     R.cursorM = null;
+    R.ghostPanel = null;
+    if (!R.drag) draw();
   });
   cv.addEventListener('contextmenu', (e) => e.preventDefault());
 
@@ -408,9 +551,14 @@ export function setupCanvasInteractions(): void {
     if (k === 'v') setTool('select');
     if (k === 'r' && !(R.sel && R.sel.type === 'panel')) setTool('roof');
     if (k === 'p') setTool('panel');
+    if (k === 'f') setTool('row');
     if (k === 'o') setTool('obstacle');
     if (k === 'e') setTool('erase');
     if (k === 'r' && R.sel && R.sel.type === 'panel') rotateSel();
+    if (k === ' ') {
+      e.preventDefault();
+      R.spaceDown = true;
+    }
     if (k === 's') {
       state.showShadows = !state.showShadows;
       el<HTMLInputElement>('chkShade').checked = state.showShadows;
@@ -425,10 +573,25 @@ export function setupCanvasInteractions(): void {
       state.tempRoof = [];
       R.sel = null;
       R.calib = null;
+      R.multi = [];
+      R.marquee = null;
+      R.ghostRow = null;
       draw();
       events.refresh();
     }
     if (k === 'enter' && state.tempRoof.length >= 3) closeRoof();
+    if ((k === 'delete' || k === 'backspace') && R.multi.length) {
+      e.preventDefault();
+      R.multi
+        .slice()
+        .sort((a, b) => b - a)
+        .forEach((i) => state.panels.splice(i, 1));
+      R.multi = [];
+      R.sel = null;
+      commit();
+      events.refresh();
+      draw();
+    }
     if ((k === 'delete' || k === 'backspace') && R.sel) {
       e.preventDefault();
       if (R.sel.type === 'panel') state.panels.splice(R.sel.i, 1);
@@ -445,5 +608,8 @@ export function setupCanvasInteractions(): void {
       events.refresh();
       draw();
     }
+  });
+  window.addEventListener('keyup', (e) => {
+    if (e.key === ' ') R.spaceDown = false;
   });
 }

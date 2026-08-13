@@ -193,17 +193,65 @@ export function draw(): void {
       ctx.stroke();
     }
     const isSel = R.sel && R.sel.type === 'panel' && R.sel.i === i;
-    let stroke = isSel ? '#fbbf24' : '#64748b';
+    const inMulti = R.multi.includes(i);
+    let stroke = isSel || inMulti ? '#fbbf24' : '#64748b';
     if (isSel && !validRect(p, i)) stroke = '#f87171';
     ctx.strokeStyle = stroke;
-    ctx.lineWidth = isSel ? 2.5 : 1.2;
-    if (isSel) {
+    ctx.lineWidth = isSel ? 2.5 : inMulti ? 2 : 1.2;
+    if (isSel || inMulti) {
       ctx.shadowColor = stroke;
       ctx.shadowBlur = 10;
     }
     ctx.strokeRect(px, py, pw, ph);
     ctx.shadowBlur = 0;
   });
+
+  /* Ghost-превью одиночной панели */
+  if (R.ghostPanel) {
+    const g = R.ghostPanel;
+    const [px, py] = m2s(g.x, g.y);
+    const pw = g.w * R.view.s - 1;
+    const ph = g.h * R.view.s - 1;
+    ctx.fillStyle = g.valid ? 'rgba(34,197,94,.16)' : 'rgba(248,113,113,.16)';
+    ctx.fillRect(px, py, pw, ph);
+    ctx.setLineDash([5, 3]);
+    ctx.strokeStyle = g.valid ? '#22c55e' : '#f87171';
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(px, py, pw, ph);
+    ctx.setLineDash([]);
+  }
+
+  /* Ghost-превью ряда */
+  if (R.ghostRow) {
+    R.ghostRow.rects.forEach((g) => {
+      const [px, py] = m2s(g.x, g.y);
+      const pw = g.w * R.view.s - 1;
+      const ph = g.h * R.view.s - 1;
+      ctx.fillStyle = g.valid ? 'rgba(34,197,94,.14)' : 'rgba(248,113,113,.14)';
+      ctx.fillRect(px, py, pw, ph);
+      ctx.setLineDash([5, 3]);
+      ctx.strokeStyle = g.valid ? '#22c55e' : '#f87171';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(px, py, pw, ph);
+      ctx.setLineDash([]);
+    });
+  }
+
+  /* Рамка группового выделения (в экранных координатах) */
+  if (R.marquee) {
+    const rect = cv.getBoundingClientRect();
+    const x1 = Math.min(R.marquee.x1, R.marquee.x2) - rect.left;
+    const y1 = Math.min(R.marquee.y1, R.marquee.y2) - rect.top;
+    const w = Math.abs(R.marquee.x2 - R.marquee.x1);
+    const h = Math.abs(R.marquee.y2 - R.marquee.y1);
+    ctx.fillStyle = 'rgba(56,189,248,.08)';
+    ctx.fillRect(x1, y1, w, h);
+    ctx.setLineDash([6, 4]);
+    ctx.strokeStyle = '#38bdf8';
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(x1, y1, w, h);
+    ctx.setLineDash([]);
+  }
 
   let sunInfo: { altDeg: number; azDeg: number; az: number } | null = null;
   if (state.showShadows) {
