@@ -57,10 +57,31 @@ export interface SatelliteImage {
   pxPerM: number;
 }
 
+export type TileLoader = (z: number, x: number, y: number) => Promise<string | null>;
+
+/** Сетевой загрузчик: тайл Esri → dataURL */
+export function networkTileLoader(z: number, x: number, y: number): Promise<string | null> {
+  const url =
+    'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/' + z + '/' + y + '/' + x;
+  return fetch(url)
+    .then((r) => (r.ok ? r.blob() : null))
+    .then((blob) => {
+      if (!blob) return null;
+      return new Promise<string | null>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result));
+        reader.onerror = () => reject(reader.error);
+        reader.readAsDataURL(blob);
+      });
+    })
+    .catch(() => null);
+}
+
 /**
- * Скачивает сетку тайлов gridN×gridN вокруг точки и склеивает в одно изображение.
+ * Склейка сетки тайлов gridN×gridN вокруг точки в одно изображение.
+ * Источник тайлов — произвольный загрузчик (сеть или локальное хранилище).
  */
-export function downloadSatelliteImage(lat: number, lng: number, z: number, gridN = 4): Promise<SatelliteImage> {
+export function stitchTiles(load: TileLoader, lat: number, lng: number, z: number, gridN = 4): Promise<SatelliteImage> {
   const { x, y } = latLngToTile(lat, lng, z);
   const startX = Math.floor(x) - Math.floor(gridN / 2);
   const startY = Math.floor(y) - Math.floor(gridN / 2);
@@ -79,21 +100,22 @@ export function downloadSatelliteImage(lat: number, lng: number, z: number, grid
   const jobs = Array.from({ length: gridN * gridN }, (_, i) => {
     const tx = startX + (i % gridN);
     const ty = startY + Math.floor(i / gridN);
-    const url =
-      'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/' + z + '/' + ty + '/' + tx;
-    return new Promise<void>((resolve) => {
-      const img = new Image();
-      img.crossOrigin = 'anonymous';
-      img.onload = () => {
-        try {
-          ctx.drawImage(img, (i % gridN) * TILE_SIZE, Math.floor(i / gridN) * TILE_SIZE);
-        } catch {
-          /* игнорируем проблемные тайлы */
-        }
-        resolve();
-      };
-      img.onerror = () => resolve();
-      img.src = url;
+    return load(z, tx, ty).then((dataUrl) => {
+      if (!dataUrl) return;
+      return new Promise<void>((resolve) => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => {
+          try {
+            ctx.drawImage(img, (i % gridN) * TILE_SIZE, Math.floor(i / gridN) * TILE_SIZE);
+          } catch {
+            /* игнорируем проблемные тайлы */
+          }
+          resolve();
+        };
+        img.onerror = () => resolve();
+        img.src = dataUrl;
+      });
     });
   });
 
@@ -103,4 +125,11 @@ export function downloadSatelliteImage(lat: number, lng: number, z: number, grid
     pixelY,
     pxPerM,
   }));
+}
+
+/**
+ * Скачивает сетку тайлов gridN×gridN вокруг точки и склеивает в одно изображение.
+ */
+export function downloadSatelliteImage(lat: number, lng: number, z: number, gridN = 4): Promise<SatelliteImage> {
+  return stitchTiles(networkTileLoader, lat, lng, z, gridN);
 }

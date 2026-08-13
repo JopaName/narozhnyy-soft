@@ -1,6 +1,7 @@
 /* Автоподсказка адреса: оффлайн-индекс улиц региона + онлайн Nominatim. */
 
 import { el } from '../core/utils';
+import { loadRegions } from '../core/offline-maps';
 import { openMapMode } from './map-browser';
 
 interface StreetItem {
@@ -9,23 +10,39 @@ interface StreetItem {
   lng: number;
 }
 
-let streetsCache: { city: string; streets: StreetItem[] } | null = null;
-let streetsPromise: Promise<{ city: string; streets: StreetItem[] } | null> | null = null;
+interface StreetIndex {
+  city: string;
+  count: number;
+  streets: StreetItem[];
+}
+
+let indexesCache: StreetIndex[] | null = null;
+let indexesPromise: Promise<StreetIndex[]> | null = null;
 let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
-function loadStreets(): Promise<{ city: string; streets: StreetItem[] } | null> {
-  if (streetsCache) return Promise.resolve(streetsCache);
-  if (streetsPromise) return streetsPromise;
-  streetsPromise = fetch('./regions/gelendzhik-streets.json')
-    .then((r) => (r.ok ? r.json() : null))
-    .then((d) => {
-      if (d && Array.isArray(d.streets) && d.streets.length) {
-        streetsCache = d as { city: string; streets: StreetItem[] };
+/** Загружает все street-индексы, перечисленные в regions.json */
+function loadIndexes(): Promise<StreetIndex[]> {
+  if (indexesCache) return Promise.resolve(indexesCache);
+  if (indexesPromise) return indexesPromise;
+  indexesPromise = loadRegions()
+    .then(async (regions) => {
+      const files = regions.filter((r) => r.streetsFile).map((r) => r.streetsFile as string);
+      const result: StreetIndex[] = [];
+      for (const file of files) {
+        try {
+          const resp = await fetch('./' + file);
+          if (!resp.ok) continue;
+          const data = (await resp.json()) as StreetIndex;
+          if (data && Array.isArray(data.streets) && data.streets.length) result.push(data);
+        } catch {
+          /* ignore */
+        }
       }
-      return streetsCache;
+      indexesCache = result;
+      return result;
     })
-    .catch(() => null);
-  return streetsPromise;
+    .catch(() => []);
+  return indexesPromise;
 }
 
 function normalize(s: string): string {
@@ -78,15 +95,14 @@ async function runSuggestions(query: string): Promise<void> {
   }
   const results: Suggestion[] = [];
 
-  /* Оффлайн: улицы из пакета региона */
-  const streets = await loadStreets();
-  if (streets) {
-    const matched = streets.streets
+  /* Оффлайн: улицы из пакетов регионов */
+  const indexes = await loadIndexes();
+  for (const idx of indexes) {
+    const matched = idx.streets
       .filter((s) => normalize(s.name).startsWith(q) || normalize(s.name).includes(q))
-      .slice(0, 6);
-    matched.forEach((s) =>
-      results.push({ text: streets.city + ', ' + s.name, lat: s.lat, lng: s.lng }),
-    );
+      .slice(0, 4);
+    matched.forEach((s) => results.push({ text: idx.city + ', ' + s.name, lat: s.lat, lng: s.lng }));
+    if (results.length >= 6) break;
   }
 
   /* Онлайн: Nominatim (добавляем к оффлайн-результатам) */

@@ -29,6 +29,32 @@ const DB_NAME = 'solarstudio-tiles';
 const STORE = 'tiles';
 const CONCURRENCY = 6;
 
+/* ═══ Реестр регионов (кэшируется) ═══ */
+
+let regionsCache: RegionDef[] | null = null;
+
+export async function loadRegions(): Promise<RegionDef[]> {
+  if (regionsCache) return regionsCache;
+  try {
+    const resp = await fetch('./regions.json');
+    if (resp.ok) {
+      const data = (await resp.json()) as { regions: RegionDef[] };
+      if (Array.isArray(data.regions)) regionsCache = data.regions;
+    }
+  } catch {
+    /* ignore */
+  }
+  return regionsCache ?? [];
+}
+
+export function findRegionCovering(lat: number, lng: number, regions: RegionDef[]): RegionDef | null {
+  for (const r of regions) {
+    const [w, s, e, n] = r.bbox;
+    if (lng >= w && lng <= e && lat >= s && lat <= n) return r;
+  }
+  return null;
+}
+
 let dbPromise: Promise<IDBDatabase> | null = null;
 function openDb(): Promise<IDBDatabase> {
   if (dbPromise) return dbPromise;
@@ -131,7 +157,20 @@ export async function regionStoredTiles(regionId: string): Promise<number> {
   if (isNative) {
     try {
       const r = await Filesystem.readdir({ path: 'tiles/' + regionId, directory: Directory.Data });
-      return (r.files || []).length;
+      let count = 0;
+      for (const entry of r.files || []) {
+        if (entry.type === 'file') {
+          count++;
+        } else {
+          try {
+            const sub = await Filesystem.readdir({ path: 'tiles/' + regionId + '/' + entry.name, directory: Directory.Data });
+            count += (sub.files || []).filter((f) => f.type === 'file').length;
+          } catch {
+            /* ignore */
+          }
+        }
+      }
+      return count;
     } catch {
       return 0;
     }
@@ -161,12 +200,20 @@ export async function regionStoredTiles(regionId: string): Promise<number> {
 export async function deleteRegionTiles(regionId: string): Promise<void> {
   if (isNative) {
     try {
-      const r = await Filesystem.readdir({ path: 'tiles/' + regionId, directory: Directory.Data });
-      for (const f of r.files || []) {
-        await Filesystem.deleteFile({ path: 'tiles/' + regionId + '/' + f.name, directory: Directory.Data }).catch(
-          () => undefined,
-        );
+      const root = 'tiles/' + regionId;
+      const r = await Filesystem.readdir({ path: root, directory: Directory.Data });
+      for (const entry of r.files || []) {
+        if (entry.type === 'directory') {
+          await Filesystem.rmdir({ path: root + '/' + entry.name, directory: Directory.Data, recursive: true }).catch(
+            () => undefined,
+          );
+        } else {
+          await Filesystem.deleteFile({ path: root + '/' + entry.name, directory: Directory.Data }).catch(
+            () => undefined,
+          );
+        }
       }
+      await Filesystem.rmdir({ path: root, directory: Directory.Data, recursive: true }).catch(() => undefined);
     } catch {
       /* ignore */
     }
@@ -193,26 +240,62 @@ export async function deleteRegionTiles(regionId: string): Promise<void> {
   }
 }
 
+/* ═══ Скачивание с поддержкой докачки ═══ */
+
+export interface DownloadState {
+  regionId: string;
+  done: number;
+  total: number;
+  running: boolean;
+  failed: number;
+}
+
 let downloadRunning = false;
 let downloadAborted = false;
+let currentState: DownloadState | null = null;
 
 export function isDownloading(): boolean {
   return downloadRunning;
+}
+
+export function getDownloadState(): DownloadState | null {
+  return currentState;
 }
 
 export function abortDownload(): void {
   downloadAborted = true;
 }
 
+async function tileExists(regionId: string, z: number, x: number, y: number): Promise<boolean> {
+  if (isNative) {
+    try {
+      await Filesystem.stat({ path: tilePath(regionId, z, x, y), directory: Directory.Data });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  try {
+    const db = await openDb();
+    return await new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE, 'readonly');
+      const req = tx.objectStore(STORE).getKey(tileKey(regionId, z, x, y));
+      req.onsuccess = () => resolve(req.result !== undefined);
+      req.onerror = () => reject(req.error);
+    });
+  } catch {
+    return false;
+  }
+}
+
 export async function downloadRegion(
   region: RegionDef,
   onProgress?: (done: number, total: number) => void,
-): Promise<{ downloaded: number; failed: number }> {
+): Promise<{ downloaded: number; failed: number; skipped: number }> {
   if (downloadRunning) throw new Error('already downloading');
   downloadRunning = true;
   downloadAborted = false;
-  let done = 0;
-  let failed = 0;
+
   const jobs: { z: number; x: number; y: number }[] = [];
   for (let z = region.minZoom; z <= region.maxZoom; z++) {
     const r = tileRangeForZoom(region, z);
@@ -221,30 +304,41 @@ export async function downloadRegion(
     }
   }
   const total = jobs.length;
+  currentState = { regionId: region.id, done: 0, total, running: true, failed: 0 };
+  let done = 0;
+  let failed = 0;
+  let skipped = 0;
 
   let cursor = 0;
   const worker = async () => {
     while (cursor < jobs.length && !downloadAborted) {
       const job = jobs[cursor++];
       try {
-        const url =
-          'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/' +
-          job.z + '/' + job.y + '/' + job.x;
-        const resp = await fetch(url);
-        if (resp.ok) {
-          const blob = await resp.blob();
-          await storeTile(region.id, job.z, job.x, job.y, blob);
-        } else failed++;
+        /* Докачка: пропускаем уже скачанные тайлы */
+        if (await tileExists(region.id, job.z, job.x, job.y)) {
+          skipped++;
+        } else {
+          const url =
+            'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/' +
+            job.z + '/' + job.y + '/' + job.x;
+          const resp = await fetch(url);
+          if (resp.ok) {
+            const blob = await resp.blob();
+            await storeTile(region.id, job.z, job.x, job.y, blob);
+          } else failed++;
+        }
       } catch {
         failed++;
       }
       done++;
+      currentState = { regionId: region.id, done, total, running: !downloadAborted && done < total, failed };
       if (onProgress) onProgress(done, total);
     }
   };
 
   const workers = Array.from({ length: CONCURRENCY }, () => worker());
   await Promise.all(workers);
+  currentState = null;
   downloadRunning = false;
-  return { downloaded: done - failed, failed };
+  return { downloaded: done - failed - skipped, failed, skipped };
 }

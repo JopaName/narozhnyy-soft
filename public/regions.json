@@ -9,12 +9,20 @@
       "streetsFile": "regions/gelendzhik-streets.json"
     },
     {
+      "id": "gelendzhik-detail",
+      "name": "Геленджик детальный (до крыш, ~150 МБ)",
+      "bbox": [38.00, 44.53, 38.16, 44.62],
+      "minZoom": 12,
+      "maxZoom": 18,
+      "streetsFile": "regions/gelendzhik-streets.json"
+    },
+    {
       "id": "krasnodar-krai",
-      "name": "Краснодарский край (большой, ~1-2 ГБ)",
+      "name": "Краснодарский край (большой, ~3.5 ГБ)",
       "bbox": [36.50, 43.80, 41.90, 46.80],
       "minZoom": 10,
       "maxZoom": 15,
-      "streetsFile": ""
+      "streetsFile": "regions/krasnodar-streets.json"
     },
     {
       "id": "rostov",

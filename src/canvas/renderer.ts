@@ -87,7 +87,8 @@ export function draw(): void {
   if (R.mapMode) {
     drawMapMode(W, H);
     ctx.restore();
-    el('stCoords').textContent = R.mapMode.lat.toFixed(5) + '° ; ' + R.mapMode.lng.toFixed(5) + '°';
+    el('stCoords').textContent =
+      R.mapMode.lat.toFixed(5) + '° ; ' + R.mapMode.lng.toFixed(5) + '°' + (R.mapMode.regionId ? '' : ' · вне оффлайн-зоны');
     el('stZoom').textContent = 'z' + R.mapMode.zoom;
     return;
   }
