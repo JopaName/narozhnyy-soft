@@ -43,6 +43,11 @@ export const state: AppState = {
   },
   arrayAngle: 0,
   showStrings: false,
+  showShadeMap: false,
+  showGrid: true,
+  showDims: true,
+  showObstacles: true,
+  locked: [],
 };
 
 const okPt = (p: unknown): p is Point => !!p && typeof p === 'object' && isFinite((p as Point).x) && isFinite((p as Point).y);
@@ -94,6 +99,13 @@ export function sanitize(o: Record<string, unknown>): AppState {
   };
   s.arrayAngle = clamp(parseFloat(String(o.arrayAngle)) || 0, -45, 45);
   s.showStrings = o.showStrings === true;
+  s.showShadeMap = o.showShadeMap === true;
+  s.showGrid = o.showGrid !== false;
+  s.showDims = o.showDims !== false;
+  s.showObstacles = o.showObstacles !== false;
+  s.locked = Array.isArray(o.locked)
+    ? (o.locked as unknown[]).filter((v): v is number => typeof v === 'number' && isFinite(v))
+    : [];
   return s;
 }
 

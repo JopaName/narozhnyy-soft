@@ -260,6 +260,24 @@ input[type='range'] {
   display: block;
 }
 
+/* Контекстное меню */
+.ctx-item {
+  padding: 9px 12px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #e2e8f0;
+  border-radius: 8px;
+  cursor: pointer;
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+  touch-action: manipulation;
+}
+
+.ctx-item:hover {
+  background: #1e293b;
+}
+
 /* ═══ МОБИЛЬНАЯ ВЁРСТКА (<768px) ═══ */
 @media (max-width: 767px) {
   header {

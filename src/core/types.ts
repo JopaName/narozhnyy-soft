@@ -94,6 +94,11 @@ export interface AppState {
   };
   arrayAngle: number;
   showStrings: boolean;
+  showShadeMap: boolean;
+  showGrid: boolean;
+  showDims: boolean;
+  showObstacles: boolean;
+  locked: number[];
 }
 
 export interface ViewState {

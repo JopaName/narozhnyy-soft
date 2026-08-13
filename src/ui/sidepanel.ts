@@ -61,6 +61,10 @@ export function syncInputs(): void {
   el<HTMLInputElement>('inAngle').value = String(state.arrayAngle);
   el('valAngle').textContent = state.arrayAngle + '°';
   el<HTMLInputElement>('chkStrings').checked = state.showStrings;
+  el<HTMLInputElement>('chkShadeMap').checked = state.showShadeMap;
+  el<HTMLInputElement>('chkGrid').checked = state.showGrid;
+  el<HTMLInputElement>('chkDims').checked = state.showDims;
+  el<HTMLInputElement>('chkObstacles').checked = state.showObstacles;
   updateOrthUI();
   syncBgUI();
 }
@@ -110,6 +114,26 @@ export function bindInputs(): void {
   });
   el<HTMLInputElement>('chkShade').onchange = (e) => {
     state.showShadows = (e.target as HTMLInputElement).checked;
+    draw();
+  };
+  el<HTMLInputElement>('chkShadeMap').onchange = (e) => {
+    state.showShadeMap = (e.target as HTMLInputElement).checked;
+    flushSave();
+    draw();
+  };
+  el<HTMLInputElement>('chkGrid').onchange = (e) => {
+    state.showGrid = (e.target as HTMLInputElement).checked;
+    flushSave();
+    draw();
+  };
+  el<HTMLInputElement>('chkDims').onchange = (e) => {
+    state.showDims = (e.target as HTMLInputElement).checked;
+    flushSave();
+    draw();
+  };
+  el<HTMLInputElement>('chkObstacles').onchange = (e) => {
+    state.showObstacles = (e.target as HTMLInputElement).checked;
+    flushSave();
     draw();
   };
   el<HTMLInputElement>('chkStrings').onchange = (e) => {

@@ -11,18 +11,21 @@ import { listVariants } from '../core/projects';
 export function snapshot(): string {
   try {
     if (cv.width > 0) {
-      /* Фото крыши и раскраска стрингов не попадают в КП */
+      /* Фото крыши, раскраска стрингов и тепловая карта не попадают в КП */
       const wasVisible = state.bg.visible;
       const wasStrings = state.showStrings;
-      if (wasVisible || wasStrings) {
+      const wasShadeMap = state.showShadeMap;
+      if (wasVisible || wasStrings || wasShadeMap) {
         state.bg.visible = false;
         state.showStrings = false;
+        state.showShadeMap = false;
         draw();
       }
       const dataUrl = cv.toDataURL('image/png');
-      if (wasVisible || wasStrings) {
+      if (wasVisible || wasStrings || wasShadeMap) {
         state.bg.visible = wasVisible;
         state.showStrings = wasStrings;
+        state.showShadeMap = wasShadeMap;
         draw();
       }
       return dataUrl;

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { state } from '../../src/core/state';
-import { computeShading, currentShadowScene, sunPos } from '../../src/domain/solar';
+import { computeShading, currentShadowScene, panelShade, sunPos } from '../../src/domain/solar';
 import { defaultState } from './_setup';
 
 beforeEach(() => Object.assign(state, structuredClone(defaultState)));
@@ -146,5 +146,36 @@ describe('computeShading', () => {
     const after = state.shadeLoss;
     /* после вызова массив должен обновиться (не обязательно измениться численно, но не быть тем же объектом) */
     expect(after).toHaveLength(12);
+  });
+
+  it('panelShade: панель рядом с препятствием затенена сильнее дальней', () => {
+    state.roof = [
+      { x: 0, y: 0 },
+      { x: 20, y: 0 },
+      { x: 20, y: 20 },
+      { x: 0, y: 20 },
+    ];
+    state.obstacles = [{ x: 8, y: 8, w: 2, h: 2, z: 4 }];
+    state.panels = [
+      { x: 8.2, y: 5.5, w: 1.5, h: 1.5 }, /* севернее препятствия — в зоне тени */
+      { x: 17, y: 17, w: 1.5, h: 1.5 }, /* дальний угол */
+    ];
+    computeShading();
+    expect(panelShade).toHaveLength(2);
+    expect(panelShade[0]).toBeGreaterThan(0.1);
+    expect(panelShade[1]).toBeLessThan(panelShade[0]);
+  });
+
+  it('panelShade пуст без препятствий', () => {
+    state.roof = [
+      { x: 0, y: 0 },
+      { x: 10, y: 0 },
+      { x: 10, y: 10 },
+      { x: 0, y: 10 },
+    ];
+    state.panels = [{ x: 1, y: 1, w: 2, h: 2 }];
+    state.obstacles = [];
+    computeShading();
+    expect(panelShade).toHaveLength(0);
   });
 });

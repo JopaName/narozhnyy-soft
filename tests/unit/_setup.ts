@@ -39,4 +39,9 @@ export const defaultState: AppState = {
   },
   arrayAngle: 0,
   showStrings: false,
+  showShadeMap: false,
+  showGrid: true,
+  showDims: true,
+  showObstacles: true,
+  locked: [],
 };

@@ -7,6 +7,7 @@ import { computeRowRects, orthSnap, panelDims, panelsInRect, pruneInvalid, selfI
 import { setTool, updateOrthUI } from '../ui/toolbar';
 import { handleCalibClick } from '../ui/bg';
 import { closeMapMode, syncMapCenterFromView } from '../ui/map-browser';
+import { closeContextMenu, openContextMenu } from '../ui/context-menu';
 import { cv } from './canvas';
 import { draw } from './renderer';
 import { s2m } from './view';
@@ -69,7 +70,12 @@ function paintLine(from: Point | null, to: Point): void {
 function eraseAt(m: Point): void {
   const pi = hitPanel(m);
   if (pi >= 0) {
+    if (state.locked.includes(pi)) {
+      toast('Панель заблокирована — снимите блокировку в меню');
+      return;
+    }
     state.panels.splice(pi, 1);
+    state.locked = state.locked.filter((l) => l !== pi).map((l) => (l > pi ? l - 1 : l));
     R.sel = null;
     events.refresh();
     draw();
@@ -107,6 +113,10 @@ export function rotateSel(): void {
   }
   const p = state.panels[R.sel.i];
   if (!p) return;
+  if (state.locked.includes(R.sel.i)) {
+    toast('Панель заблокирована');
+    return;
+  }
   const t = p.w;
   p.w = p.h;
   p.h = t;
@@ -202,6 +212,15 @@ function handleDown(e: PointerEvent): void {
   }
   const pi = hitPanel(m);
   if (pi >= 0) {
+    if (state.locked.includes(pi)) {
+      /* Заблокированная панель: только выбор, без перемещения */
+      R.multi = [];
+      R.sel = { type: 'panel', i: pi };
+      R.drag = null;
+      draw();
+      events.refresh();
+      return;
+    }
     if (R.multi.includes(pi)) {
       /* тащим всю группу (локальные координаты) */
       R.sel = null;
@@ -415,7 +434,9 @@ function handleUp(e: PointerEvent): void {
       const ly1 = Math.min(...corners.map((c) => c.y));
       const lx2 = Math.max(...corners.map((c) => c.x));
       const ly2 = Math.max(...corners.map((c) => c.y));
-      R.multi = panelsInRect(state.panels, { x: lx1, y: ly1, w: lx2 - lx1, h: ly2 - ly1 });
+      R.multi = panelsInRect(state.panels, { x: lx1, y: ly1, w: lx2 - lx1, h: ly2 - ly1 }).filter(
+        (i) => !state.locked.includes(i),
+      );
       if (R.multi.length) toast('Выделено панелей: ' + R.multi.length);
     }
   }
@@ -451,6 +472,20 @@ function handleUp(e: PointerEvent): void {
 }
 
 export function setupCanvasInteractions(): void {
+  /* Long-press для контекстного меню */
+  let lpTimer: ReturnType<typeof setTimeout> | null = null;
+  let lpLast: { x: number; y: number } | null = null;
+  let lpFired = false;
+
+  const clearLp = () => {
+    if (lpTimer) {
+      clearTimeout(lpTimer);
+      lpTimer = null;
+    }
+    lpLast = null;
+    lpFired = false;
+  };
+
   cv.addEventListener('pointerdown', (e) => {
     e.preventDefault();
     /* Средняя кнопка — панорама */
@@ -473,6 +508,7 @@ export function setupCanvasInteractions(): void {
     }
     R.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (R.pointers.size === 2) {
+      clearLp();
       R.drag = null;
       R.ghostOb = null;
       R.sel = null;
@@ -490,11 +526,48 @@ export function setupCanvasInteractions(): void {
       return;
     }
     if (R.pointers.size > 2) return;
+    /* Запуск long-press таймера */
+    if (e.pointerType === 'touch' || e.pointerType === 'pen' || (e.pointerType === 'mouse' && e.button === 0)) {
+      lpLast = { x: e.clientX, y: e.clientY };
+      lpFired = false;
+      lpTimer = setTimeout(() => {
+        lpTimer = null;
+        if (!lpLast || R.pinch) return;
+        lpFired = true;
+        R.drag = null;
+        const m = s2m({ clientX: lpLast.x, clientY: lpLast.y });
+        const pi = hitPanel(m);
+        if (pi >= 0) {
+          R.multi = [];
+          R.sel = { type: 'panel', i: pi };
+          openContextMenu(lpLast.x, lpLast.y, { type: 'panel', i: pi });
+          draw();
+          events.refresh();
+          return;
+        }
+        const oi = hitObstacle(m);
+        if (oi >= 0) {
+          R.multi = [];
+          R.sel = { type: 'obstacle', i: oi };
+          openContextMenu(lpLast.x, lpLast.y, { type: 'obstacle', i: oi });
+          draw();
+          events.refresh();
+        }
+      }, 550);
+    }
     handleDown(e);
   });
 
   cv.addEventListener('pointermove', (e) => {
     if (R.pointers.has(e.pointerId)) R.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    /* отмена long-press при движении */
+    if (lpTimer && lpLast) {
+      if (Math.hypot(e.clientX - lpLast.x, e.clientY - lpLast.y) > 12) {
+        clearTimeout(lpTimer);
+        lpTimer = null;
+        lpLast = null;
+      }
+    }
     if (R.pinch && R.pointers.size >= 2) {
       const pts = [...R.pointers.values()];
       const d = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y) || 1;
@@ -513,6 +586,7 @@ export function setupCanvasInteractions(): void {
   });
 
   const pointerEnd = (e: PointerEvent): void => {
+    clearLp();
     R.pointers.delete(e.pointerId);
     if (R.pinch) {
       if (R.pointers.size < 2) R.pinch = null;
@@ -558,7 +632,30 @@ export function setupCanvasInteractions(): void {
     R.ghostPanel = null;
     if (!R.drag) draw();
   });
-  cv.addEventListener('contextmenu', (e) => e.preventDefault());
+  cv.addEventListener('contextmenu', (e) => {
+    e.preventDefault();
+    if (R.mapMode) return;
+    const m = s2m(e);
+    const pi = hitPanel(m);
+    if (pi >= 0) {
+      R.multi = [];
+      R.sel = { type: 'panel', i: pi };
+      openContextMenu(e.clientX, e.clientY, { type: 'panel', i: pi });
+      draw();
+      events.refresh();
+      return;
+    }
+    const oi = hitObstacle(m);
+    if (oi >= 0) {
+      R.multi = [];
+      R.sel = { type: 'obstacle', i: oi };
+      openContextMenu(e.clientX, e.clientY, { type: 'obstacle', i: oi });
+      draw();
+      events.refresh();
+      return;
+    }
+    closeContextMenu();
+  });
 
   window.addEventListener('keydown', (e) => {
     const tag = document.activeElement ? document.activeElement.tagName : '';
@@ -626,7 +723,14 @@ export function setupCanvasInteractions(): void {
     }
     if ((k === 'delete' || k === 'backspace') && R.sel) {
       e.preventDefault();
-      if (R.sel.type === 'panel') state.panels.splice(R.sel.i, 1);
+      if (R.sel.type === 'panel') {
+        if (state.locked.includes(R.sel.i)) {
+          toast('Панель заблокирована — снимите блокировку в меню');
+          return;
+        }
+        state.panels.splice(R.sel.i, 1);
+        state.locked = state.locked.filter((l) => l !== R.sel!.i).map((l) => (l > R.sel!.i ? l - 1 : l));
+      }
       if (R.sel.type === 'obstacle') state.obstacles.splice(R.sel.i, 1);
       if (R.sel.type === 'vertex') {
         if (state.roof.length <= 3) {

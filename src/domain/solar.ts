@@ -56,7 +56,11 @@ export function computeShading(overrides?: Partial<AppState>): number[] {
   const s = resolveState(overrides);
   const loss = new Array(12).fill(0);
   const obs = s.obstacles.filter((o) => (o.z || 0) > 0.05);
+  /* По-панельная тепловая карта: годовая взвешенная доля тени (только для живого состояния) */
+  const acc = new Array(s.panels.length).fill(0);
+  const accW = new Array(s.panels.length).fill(0);
   if (!s.panels.length || !obs.length) {
+    panelShade.length = 0;
     if (!overrides) state.shadeLoss = loss;
     return loss;
   }
@@ -109,7 +113,8 @@ export function computeShading(overrides?: Partial<AppState>): number[] {
         shps.push({ poly: hp, bb: { a, b, c, d: d2 } });
       }
       let tot = 0;
-      for (const pd of panelData) {
+      for (let pi = 0; pi < panelData.length; pi++) {
+        const pd = panelData[pi];
         let hit = false;
         for (const sh of shps) {
           if (!(pd.bb.c <= sh.bb.a || sh.bb.c <= pd.bb.a || pd.bb.d <= sh.bb.b || sh.bb.d <= pd.bb.b)) {
@@ -118,8 +123,6 @@ export function computeShading(overrides?: Partial<AppState>): number[] {
           }
         }
         if (!hit) continue;
-        const ptsTest: Point[] = coarse ? [pd.pts[0], pd.pts[2]] : pd.pts;
-        /* центр + углы (для coarse — пара углов) */
         const testPts = coarse
           ? [midPoint(pd.pts[0], pd.pts[2])]
           : [midPoint(pd.pts[0], pd.pts[2]), pd.pts[0], pd.pts[1], pd.pts[2], pd.pts[3]];
@@ -132,7 +135,12 @@ export function computeShading(overrides?: Partial<AppState>): number[] {
             }
           }
         }
-        tot += sh / testPts.length;
+        const frac = sh / testPts.length;
+        tot += frac;
+        if (!overrides && frac > 0) {
+          acc[pi] += frac * Math.sin(sp.alt);
+          accW[pi] += Math.sin(sp.alt);
+        }
       }
       const wgt = Math.sin(sp.alt);
       lSum += wgt * (tot / s.panels.length);
@@ -140,9 +148,19 @@ export function computeShading(overrides?: Partial<AppState>): number[] {
     }
     loss[m] = wSum > 0 ? clamp(lSum / wSum, 0, 1) : 0;
   }
-  if (!overrides) state.shadeLoss = loss;
+  if (!overrides) {
+    state.shadeLoss = loss;
+    /* нормализуем по-панельную карту */
+    panelShade.length = acc.length;
+    for (let pi = 0; pi < acc.length; pi++) {
+      panelShade[pi] = accW[pi] > 0 ? Math.min(1, acc[pi] / accW[pi]) : 0;
+    }
+  }
   return loss;
 }
+
+/** По-панельная годовая доля тени (0..1) — для тепловой карты */
+export const panelShade: number[] = [];
 
 function midPoint(a: Point, b: Point): Point {
   return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };

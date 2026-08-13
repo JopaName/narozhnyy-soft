@@ -3,7 +3,7 @@ import { events, R } from '../core/runtime';
 import { state } from '../core/state';
 import { el, fmtHour, nf } from '../core/utils';
 import { localToWorld, orthSnap, roofBBox, validRect } from '../domain/geometry';
-import { currentShadowScene } from '../domain/solar';
+import { currentShadowScene, panelShade } from '../domain/solar';
 import { stringAssignments } from '../domain/simulation';
 import { getBgImage } from '../ui/bg';
 import { ensureTile, getCachedTile } from '../ui/map-browser';
@@ -11,6 +11,28 @@ import { ctx, cv, dpr } from './canvas';
 import { m2s } from './view';
 
 const STRING_PALETTE = ['#f59e0b', '#38bdf8', '#22c55e', '#a78bfa', '#f87171', '#2dd4bf', '#fbbf24', '#e879f9', '#818cf8', '#fb923c'];
+
+function lerp(a: number, b: number, t: number): number {
+  return a + (b - a) * t;
+}
+
+/** Цвет тепловой карты: 0 — зелёный, 0.5 — жёлтый, 1 — красный */
+function shadeColor(f: number): string {
+  const t = Math.max(0, Math.min(1, f));
+  let r: number, g: number, b: number;
+  if (t < 0.5) {
+    const k = t / 0.5;
+    r = Math.round(lerp(34, 250, k));
+    g = Math.round(lerp(197, 204, k));
+    b = Math.round(lerp(94, 21, k));
+  } else {
+    const k = (t - 0.5) / 0.5;
+    r = Math.round(lerp(250, 248, k));
+    g = Math.round(lerp(204, 113, k));
+    b = Math.round(lerp(21, 113, k));
+  }
+  return 'rgb(' + r + ',' + g + ',' + b + ')';
+}
 
 const WORLD_METERS = 40075016.686;
 
@@ -110,22 +132,24 @@ export function draw(): void {
   const wx1 = (W - R.view.ox) / R.view.s;
   const wy0 = -R.view.oy / R.view.s;
   const wy1 = (H - R.view.oy) / R.view.s;
-  ctx.lineWidth = 1;
-  for (let gx = Math.floor(wx0 / step) * step; gx <= wx1; gx += step) {
-    const [px] = m2s(gx, 0);
-    ctx.strokeStyle = gx % 5 === 0 ? 'rgba(56,189,248,.10)' : 'rgba(56,189,248,.045)';
-    ctx.beginPath();
-    ctx.moveTo(px, 0);
-    ctx.lineTo(px, H);
-    ctx.stroke();
-  }
-  for (let gy = Math.floor(wy0 / step) * step; gy <= wy1; gy += step) {
-    const [, py] = m2s(0, gy);
-    ctx.strokeStyle = gy % 5 === 0 ? 'rgba(56,189,248,.10)' : 'rgba(56,189,248,.045)';
-    ctx.beginPath();
-    ctx.moveTo(0, py);
-    ctx.lineTo(W, py);
-    ctx.stroke();
+  if (state.showGrid) {
+    ctx.lineWidth = 1;
+    for (let gx = Math.floor(wx0 / step) * step; gx <= wx1; gx += step) {
+      const [px] = m2s(gx, 0);
+      ctx.strokeStyle = gx % 5 === 0 ? 'rgba(56,189,248,.10)' : 'rgba(56,189,248,.045)';
+      ctx.beginPath();
+      ctx.moveTo(px, 0);
+      ctx.lineTo(px, H);
+      ctx.stroke();
+    }
+    for (let gy = Math.floor(wy0 / step) * step; gy <= wy1; gy += step) {
+      const [, py] = m2s(0, gy);
+      ctx.strokeStyle = gy % 5 === 0 ? 'rgba(56,189,248,.10)' : 'rgba(56,189,248,.045)';
+      ctx.beginPath();
+      ctx.moveTo(0, py);
+      ctx.lineTo(W, py);
+      ctx.stroke();
+    }
   }
 
   if (state.roof.length) {
@@ -142,15 +166,17 @@ export function draw(): void {
     ctx.lineWidth = 2;
     ctx.stroke();
     const bb = roofBBox();
-    ctx.fillStyle = '#64748b';
-    ctx.font = '600 11px Manrope';
-    ctx.textAlign = 'center';
-    const [a, b] = m2s(bb.minX, bb.maxY);
-    const [c] = m2s(bb.maxX, bb.maxY);
-    ctx.fillText(nf(bb.maxX - bb.minX, 1) + ' м', (a + c) / 2, b + 18);
-    const [e, f] = m2s(bb.maxX, bb.minY);
-    const [, g2] = m2s(bb.maxX, bb.maxY);
-    ctx.fillText(nf(bb.maxY - bb.minY, 1) + ' м', e + 28, (f + g2) / 2);
+    if (state.showDims) {
+      ctx.fillStyle = '#64748b';
+      ctx.font = '600 11px Manrope';
+      ctx.textAlign = 'center';
+      const [a, b] = m2s(bb.minX, bb.maxY);
+      const [c] = m2s(bb.maxX, bb.maxY);
+      ctx.fillText(nf(bb.maxX - bb.minX, 1) + ' м', (a + c) / 2, b + 18);
+      const [e, f] = m2s(bb.maxX, bb.minY);
+      const [, g2] = m2s(bb.maxX, bb.maxY);
+      ctx.fillText(nf(bb.maxY - bb.minY, 1) + ' м', e + 28, (f + g2) / 2);
+    }
     state.roof.forEach((p) => {
       const [px, py] = m2s(p.x, p.y);
       ctx.beginPath();
@@ -204,36 +230,38 @@ export function draw(): void {
     }
   }
 
-  state.obstacles.forEach((o, i) => {
-    const [px, py] = m2s(o.x, o.y);
-    const pw = o.w * R.view.s;
-    const ph = o.h * R.view.s;
-    const isSel = R.sel && R.sel.type === 'obstacle' && R.sel.i === i;
-    ctx.save();
-    ctx.beginPath();
-    ctx.rect(px, py, pw, ph);
-    ctx.clip();
-    ctx.fillStyle = 'rgba(245,158,11,.18)';
-    ctx.fillRect(px, py, pw, ph);
-    ctx.strokeStyle = 'rgba(245,158,11,.5)';
-    ctx.lineWidth = 1;
-    for (let l = -ph; l < pw; l += 8) {
+  if (state.showObstacles) {
+    state.obstacles.forEach((o, i) => {
+      const [px, py] = m2s(o.x, o.y);
+      const pw = o.w * R.view.s;
+      const ph = o.h * R.view.s;
+      const isSel = R.sel && R.sel.type === 'obstacle' && R.sel.i === i;
+      ctx.save();
       ctx.beginPath();
-      ctx.moveTo(px + l, py);
-      ctx.lineTo(px + l + ph, py + ph);
-      ctx.stroke();
-    }
-    ctx.restore();
-    ctx.strokeStyle = isSel ? '#fbbf24' : '#f59e0b';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(px, py, pw, ph);
-    if (isSel) {
-      ctx.fillStyle = '#fbbf24';
-      ctx.font = '700 11px Manrope';
-      ctx.textAlign = 'center';
-      ctx.fillText('высота ' + (o.z || 0) + ' м', px + pw / 2, py - 8);
-    }
-  });
+      ctx.rect(px, py, pw, ph);
+      ctx.clip();
+      ctx.fillStyle = 'rgba(245,158,11,.18)';
+      ctx.fillRect(px, py, pw, ph);
+      ctx.strokeStyle = 'rgba(245,158,11,.5)';
+      ctx.lineWidth = 1;
+      for (let l = -ph; l < pw; l += 8) {
+        ctx.beginPath();
+        ctx.moveTo(px + l, py);
+        ctx.lineTo(px + l + ph, py + ph);
+        ctx.stroke();
+      }
+      ctx.restore();
+      ctx.strokeStyle = isSel ? '#fbbf24' : '#f59e0b';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(px, py, pw, ph);
+      if (isSel) {
+        ctx.fillStyle = '#fbbf24';
+        ctx.font = '700 11px Manrope';
+        ctx.textAlign = 'center';
+        ctx.fillText('высота ' + (o.z || 0) + ' м', px + pw / 2, py - 8);
+      }
+    });
+  }
 
   if (R.ghostOb && R.ghostOb.w > 0.05 && R.ghostOb.h > 0.05) {
     const [px, py] = m2s(R.ghostOb.x, R.ghostOb.y);
@@ -257,11 +285,18 @@ export function draw(): void {
     ctx.save();
     ctx.translate(px, py);
     ctx.rotate(angleRad);
-    const gr = ctx.createLinearGradient(0, 0, 0, ph);
-    gr.addColorStop(0, '#1e3a8a');
-    gr.addColorStop(1, '#0c1f4a');
-    ctx.fillStyle = gr;
-    ctx.fillRect(0, 0, pw, ph);
+    if (state.showShadeMap) {
+      ctx.fillStyle = shadeColor(panelShade[i] ?? 0);
+      ctx.globalAlpha = 0.85;
+      ctx.fillRect(0, 0, pw, ph);
+      ctx.globalAlpha = 1;
+    } else {
+      const gr = ctx.createLinearGradient(0, 0, 0, ph);
+      gr.addColorStop(0, '#1e3a8a');
+      gr.addColorStop(1, '#0c1f4a');
+      ctx.fillStyle = gr;
+      ctx.fillRect(0, 0, pw, ph);
+    }
     if (R.view.s > 10) {
       ctx.strokeStyle = 'rgba(148,163,184,.25)';
       ctx.lineWidth = 1;
@@ -310,6 +345,31 @@ export function draw(): void {
       ctx.fillStyle = '#cbd5e1';
       ctx.fillText('Стринг ' + (s + 1), 34, y + 10);
     }
+  }
+
+  /* Легенда тепловой карты */
+  if (state.showShadeMap && panelShade.length) {
+    const lx = 16;
+    const ly = H - 76;
+    const lw = 140;
+    const grad = ctx.createLinearGradient(lx, 0, lx + lw, 0);
+    grad.addColorStop(0, shadeColor(0));
+    grad.addColorStop(0.5, shadeColor(0.5));
+    grad.addColorStop(1, shadeColor(1));
+    ctx.fillStyle = grad;
+    ctx.fillRect(lx, ly, lw, 10);
+    ctx.strokeStyle = '#334155';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(lx, ly, lw, 10);
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = '600 10px Manrope';
+    ctx.textAlign = 'left';
+    ctx.fillText('потери тени: 0%', lx, ly + 22);
+    ctx.textAlign = 'center';
+    ctx.fillText('50%', lx + lw / 2, ly + 22);
+    ctx.textAlign = 'right';
+    ctx.fillText('100%', lx + lw, ly + 22);
+    ctx.textAlign = 'left';
   }
 
   /* Ghost-превью одиночной панели */
@@ -386,23 +446,25 @@ export function draw(): void {
     });
   }
 
-  const bl = 5 * R.view.s;
-  const bx = 16;
-  const by = H - 44;
-  ctx.strokeStyle = '#94a3b8';
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(bx, by);
-  ctx.lineTo(bx + bl, by);
-  ctx.moveTo(bx, by - 4);
-  ctx.lineTo(bx, by + 4);
-  ctx.moveTo(bx + bl, by - 4);
-  ctx.lineTo(bx + bl, by + 4);
-  ctx.stroke();
-  ctx.fillStyle = '#94a3b8';
-  ctx.font = '600 10px Manrope';
-  ctx.textAlign = 'left';
-  ctx.fillText('5 м', bx + bl + 6, by + 3);
+  if (state.showDims) {
+    const bl = 5 * R.view.s;
+    const bx = 16;
+    const by = H - 44;
+    ctx.strokeStyle = '#94a3b8';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(bx, by);
+    ctx.lineTo(bx + bl, by);
+    ctx.moveTo(bx, by - 4);
+    ctx.lineTo(bx, by + 4);
+    ctx.moveTo(bx + bl, by - 4);
+    ctx.lineTo(bx + bl, by + 4);
+    ctx.stroke();
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = '600 10px Manrope';
+    ctx.textAlign = 'left';
+    ctx.fillText('5 м', bx + bl + 6, by + 3);
+  }
 
   ctx.beginPath();
   ctx.arc(W - 30, H - 46, 12, 0, 7);

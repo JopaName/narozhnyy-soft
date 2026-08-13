@@ -121,6 +121,9 @@
           </div>
         </div>
         <div class="text-[12px] text-slate-400 mb-2" id="shadeInfo"></div>
+        <label class="flex items-center gap-2 text-[12px] font-bold text-slate-300 cursor-pointer mb-2">
+          <input type="checkbox" id="chkShadeMap" class="w-4 h-4 accent-amber-500"> Тёплая карта потерь тени
+        </label>
         <div id="obZRow" class="hidden">
           <div class="text-[11px] text-slate-500 mb-1">Высота выбранного препятствия, м</div>
           <input type="number" step="0.5" min="0" max="15" class="inp" id="inObZ" value="1">
@@ -161,6 +164,22 @@
         <div class="text-[11px] text-slate-500 mt-2 leading-relaxed">🛰 — снимок со спутника с автокалибровкой масштаба (обводите крышу инструментом «Крыша»). 📷 — своё фото/план с ручной калибровкой.</div>
         <div class="text-[10px] text-slate-600 mt-1">Снимки: © Esri, Maxar, Earthstar Geographics</div>
         <input type="file" id="fileBg" accept="image/*" class="hidden">
+      </div>
+      <div class="card p-3">
+        <div class="flex items-center justify-between mb-2">
+          <div class="lbl">Слои</div>
+        </div>
+        <div class="space-y-2">
+          <label class="flex items-center gap-2 text-[12px] font-bold text-slate-300 cursor-pointer">
+            <input type="checkbox" id="chkGrid" class="w-4 h-4 accent-amber-500" checked> Сетка
+          </label>
+          <label class="flex items-center gap-2 text-[12px] font-bold text-slate-300 cursor-pointer">
+            <input type="checkbox" id="chkDims" class="w-4 h-4 accent-amber-500" checked> Размеры
+          </label>
+          <label class="flex items-center gap-2 text-[12px] font-bold text-slate-300 cursor-pointer">
+            <input type="checkbox" id="chkObstacles" class="w-4 h-4 accent-amber-500" checked> Препятствия
+          </label>
+        </div>
       </div>
       <div class="space-y-2">
         <button class="btn btn-ghost w-full justify-center" id="btnRotateSel">⟳ Повернуть выбранную</button>
@@ -368,6 +387,10 @@
 </main>
 <div id="toast"></div>
 <div id="sbBackdrop"></div>
+
+<!-- ══ КОНТЕКСТНОЕ МЕНЮ ══ -->
+<div id="ctxMenu" style="display:none;position:fixed;z-index:60;background:#0f172a;border:1px solid #334155;border-radius:12px;padding:6px;min-width:180px;box-shadow:0 12px 32px rgba(0,0,0,.55)">
+</div>
 
 <!-- ══ ПРОЕКТЫ ══ -->
 <div id="pr-modal" class="fixed inset-0 z-50 flex items-center justify-center" style="display:none;background:rgba(0,0,0,.7)">

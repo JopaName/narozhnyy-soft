@@ -28,6 +28,7 @@ import { setupAddrAutocomplete } from './ui/addr-autocomplete';
 import { setupMapManager } from './ui/map-manager';
 import { setupMapButtons } from './ui/map-browser';
 import { setupMobileNav } from './ui/mobile-nav';
+import { setupContextMenu } from './ui/context-menu';
 
 events.refresh = refresh;
 events.draw = draw;
@@ -63,6 +64,7 @@ async function init(): Promise<void> {
     setupMapButtons();
     setupAddrAutocomplete();
     setupMobileNav();
+    setupContextMenu();
     setOpenProjectHook(openProjectRecord);
     setLoadSampleHook(loadSample);
     setTool('select');
