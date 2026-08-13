@@ -3,6 +3,9 @@ import { events, R } from '../core/runtime';
 import { state } from '../core/state';
 import { el, nf, toast } from '../core/utils';
 import { getActiveId, flushSave } from '../core/projects';
+import { geocodeAddress } from '../core/geocode';
+import { downloadSatelliteImage } from '../core/satellite';
+import { cv, dpr } from '../canvas/canvas';
 
 let bgImg: HTMLImageElement | null = null;
 
@@ -128,10 +131,56 @@ export function removeBg(): void {
   bgImg = null;
   state.bg.visible = false;
   state.bg.calibS = 0;
+  state.bg.addr = '';
   if (projectId) deleteImage(projectId);
   flushSave();
+  syncBgUI();
   events.draw();
   toast('Фон удалён');
+}
+
+/* ═══ СПУТНИК ═══ */
+
+export async function loadSatelliteFromAddress(address: string, zoom: number): Promise<void> {
+  const projectId = getActiveId();
+  if (!projectId) {
+    toast('Сначала создайте или откройте проект');
+    return;
+  }
+  toast('Ищу адрес…');
+  const geo = await geocodeAddress(address);
+  if (!geo) {
+    toast('Адрес не найден — уточните запрос');
+    return;
+  }
+  toast('Скачиваю спутниковый снимок…');
+  try {
+    const sat = await downloadSatelliteImage(geo.lat, geo.lng, zoom);
+    await setImage(projectId, sat.dataUrl);
+    const img = new Image();
+    img.onload = () => {
+      bgImg = img;
+      state.bg.visible = true;
+      state.bg.opacity = 0.6;
+      state.bg.calibS = sat.pxPerM;
+      state.bg.addr = geo.name;
+      flushSave();
+      syncBgUI();
+      /* Автокалибровка: масштаб из зума/широты, точка поиска — в центр канваса */
+      const W = cv.width / dpr || 800;
+      const H = cv.height / dpr || 500;
+      const worldX = sat.pixelX / sat.pxPerM;
+      const worldY = sat.pixelY / sat.pxPerM;
+      R.view.s = sat.pxPerM;
+      R.view.ox = W / 2 - worldX * R.view.s;
+      R.view.oy = H / 2 - worldY * R.view.s;
+      events.draw();
+      toast('Снимок загружен — обводите крышу инструментом «Крыша» (R)');
+    };
+    img.src = sat.dataUrl;
+  } catch {
+    toast('Не удалось скачать снимок — проверьте интернет');
+  }
 }
 
 export function setupBg(): void {
@@ -143,6 +192,15 @@ export function setupBg(): void {
   el('btnBgLoad').onclick = () => el<HTMLInputElement>('fileBg').click();
   el('btnBgCal').onclick = startCalibration;
   el('btnBgRemove').onclick = removeBg;
+  el('btnSat').onclick = () => {
+    const addr = el<HTMLInputElement>('inAddr').value.trim();
+    if (!addr) {
+      toast('Введите адрес или название места');
+      return;
+    }
+    const zoom = parseInt(el<HTMLSelectElement>('selSatZoom').value, 10) || 19;
+    void loadSatelliteFromAddress(addr, zoom);
+  };
   el<HTMLInputElement>('chkBg').onchange = (e) => {
     state.bg.visible = (e.target as HTMLInputElement).checked;
     flushSave();
@@ -160,4 +218,5 @@ export function syncBgUI(): void {
   el<HTMLInputElement>('chkBg').checked = state.bg.visible;
   el<HTMLInputElement>('rngBgOpacity').value = String(Math.round(state.bg.opacity * 100));
   el('valBgOpacity').textContent = Math.round(state.bg.opacity * 100) + '%';
+  el<HTMLInputElement>('inAddr').value = state.bg.addr;
 }

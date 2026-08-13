@@ -39,6 +39,7 @@ export const state: AppState = {
     visible: false,
     opacity: 0.5,
     calibS: 0,
+    addr: '',
   },
 };
 
@@ -87,6 +88,7 @@ export function sanitize(o: Record<string, unknown>): AppState {
     visible: bgRaw.visible === true,
     opacity: clamp(parseFloat(String(bgRaw.opacity)) || 0.5, 0.1, 1),
     calibS: Math.max(0, parseFloat(String(bgRaw.calibS)) || 0),
+    addr: typeof bgRaw.addr === 'string' ? bgRaw.addr.slice(0, 120) : '',
   };
   return s;
 }

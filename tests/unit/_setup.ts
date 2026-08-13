@@ -35,5 +35,6 @@ export const defaultState: AppState = {
     visible: false,
     opacity: 0.5,
     calibS: 0,
+    addr: '',
   },
 };

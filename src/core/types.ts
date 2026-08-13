@@ -90,6 +90,7 @@ export interface AppState {
     visible: boolean;
     opacity: number;
     calibS: number;
+    addr: string;
   };
 }
 

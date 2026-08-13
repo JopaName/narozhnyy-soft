@@ -119,10 +119,22 @@
       </div>
       <div class="card p-3">
         <div class="flex items-center justify-between mb-2">
-          <div class="lbl">Фон крыши (фото)</div>
+          <div class="lbl">Фон крыши (фото/спутник)</div>
           <label class="flex items-center gap-1.5 text-[12px] font-bold text-slate-300 cursor-pointer">
             <input type="checkbox" id="chkBg" class="w-4 h-4 accent-amber-500"> Показывать
           </label>
+        </div>
+        <div class="flex gap-2 mb-2">
+          <input class="inp flex-1 text-[12px]" id="inAddr" placeholder="Адрес или место (напр. Краснодар, ул. Красная 1)">
+          <button class="btn btn-amber justify-center text-[12px] px-3 shrink-0" id="btnSat" title="Снимок со спутника">🛰</button>
+        </div>
+        <div class="flex items-center gap-2 mb-2">
+          <span class="text-[11px] text-slate-500">Масштаб:</span>
+          <select class="inp w-auto text-[12px]" id="selSatZoom">
+            <option value="17">Город (~1.2 м/px)</option>
+            <option value="18">Район (~0.6 м/px)</option>
+            <option value="19" selected>Дом (~0.3 м/px)</option>
+          </select>
         </div>
         <div class="flex gap-2 mb-2">
           <button class="btn btn-ghost flex-1 justify-center text-[12px]" id="btnBgLoad">📷 Загрузить</button>
@@ -131,7 +143,8 @@
         </div>
         <div class="text-[11px] text-slate-500 mb-1">Прозрачность: <b id="valBgOpacity" class="text-white">50%</b></div>
         <input type="range" min="10" max="90" class="w-full" id="rngBgOpacity" value="50">
-        <div class="text-[11px] text-slate-500 mt-2 leading-relaxed">Загрузите фото или план крыши, откалибруйте масштаб по известной длине — и обводите контур прямо по картинке.</div>
+        <div class="text-[11px] text-slate-500 mt-2 leading-relaxed">🛰 — снимок со спутника с автокалибровкой масштаба (обводите крышу инструментом «Крыша»). 📷 — своё фото/план с ручной калибровкой.</div>
+        <div class="text-[10px] text-slate-600 mt-1">Снимки: © Esri, Maxar, Earthstar Geographics</div>
         <input type="file" id="fileBg" accept="image/*" class="hidden">
       </div>
       <div class="space-y-2">
