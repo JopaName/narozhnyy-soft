@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { state } from '../../src/core/state';
-import { simulate, stringCalc } from '../../src/domain/simulation';
+import { simulate, stringCalc, stringParams } from '../../src/domain/simulation';
 import { defaultState } from './_setup';
 
 beforeEach(() => Object.assign(state, structuredClone(defaultState)));
@@ -322,5 +322,28 @@ describe('simulate', () => {
     expect(sc).not.toBeNull();
     expect(sc!.N).toBe(1);
     expect(stringCalc()).toBeNull(); /* глобальное состояние не тронуто */
+  });
+
+  it('stringParams: вольты и амперы по стрингам', () => {
+    state.roof = [
+      { x: 0, y: 0 },
+      { x: 30, y: 0 },
+      { x: 30, y: 10 },
+      { x: 0, y: 10 },
+    ];
+    state.panel = 0; /* JA Solar 410: Vmp 31.5, Voc 37.9, Imp 13.02 */
+    state.inverter = 2; /* Huawei 10KTL */
+    /* 16 панелей: hotVmp=27.72, vmin=200 → minPer=8; maxPer=28 → per=18 → 1 стринг */
+    for (let i = 0; i < 16; i++) {
+      state.panels.push({ x: i * 1.8, y: 1, w: 1.134, h: 1.722 });
+    }
+    const params = stringParams()!;
+    expect(params).not.toBeNull();
+    const totalCount = params.reduce((a, p) => a + p.count, 0);
+    expect(totalCount).toBe(16);
+    const first = params[0];
+    expect(first.vmpV).toBeCloseTo(first.count * 31.5, 5);
+    expect(first.vocV).toBeCloseTo(first.count * 37.9, 5);
+    expect(first.impA).toBeCloseTo(13.02, 1);
   });
 });

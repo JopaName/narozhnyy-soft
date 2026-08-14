@@ -43,6 +43,23 @@ export function stringAssignments(): Map<number, number> | null {
   return map;
 }
 
+/** Параметры каждого стринга: панелей, Vmp-напряжение, Voc-напряжение, ток */
+export function stringParams(): { count: number; vmpV: number; vocV: number; impA: number }[] | null {
+  const sc = stringCalc();
+  const map = stringAssignments();
+  if (!sc || !map) return null;
+  const arr: { count: number; vmpV: number; vocV: number; impA: number }[] = [];
+  for (let s = 0; s < sc.strings; s++) arr.push({ count: 0, vmpV: 0, vocV: 0, impA: Math.round(sc.md.Imp * 10) / 10 });
+  map.forEach((s) => {
+    if (arr[s]) arr[s].count++;
+  });
+  arr.forEach((s) => {
+    s.vmpV = Math.round(s.count * sc.md.Vmp * 10) / 10;
+    s.vocV = Math.round(s.count * sc.md.Voc * 10) / 10;
+  });
+  return arr;
+}
+
 export function simulate(overrides?: Partial<AppState>) {
   const s = resolveState(overrides);
   const city = CITIES[s.city] || CITIES.krasnodar;

@@ -3,6 +3,7 @@ import { state } from '../../src/core/state';
 import {
   ccw,
   computeRowRects,
+  computeSnap,
   hull,
   localToWorld,
   orthSnap,
@@ -10,6 +11,7 @@ import {
   panelTotalAngle,
   panelWorldCorners,
   panelWorldCorners2,
+  panelsBBox,
   panelsInRect,
   pointInPoly,
   polyArea,
@@ -512,5 +514,69 @@ describe('поворот массива', () => {
     state.panels = [];
     /* (4.5,4.5) с поворотом 45°: дальний угол вылезает за 6×6 */
     expect(validRect({ x: 4.5, y: 4.5, w: 2, h: 1, a: 45 })).toBe(false);
+  });
+
+  it('computeSnap: прилипание к краю соседней панели', () => {
+    state.roof = [
+      { x: 0, y: 0 },
+      { x: 20, y: 0 },
+      { x: 20, y: 20 },
+      { x: 0, y: 20 },
+    ];
+    state.arrayAngle = 0;
+    state.obstacles = [];
+    /* сосед: правая грань x=5 */
+    state.panels = [{ x: 3, y: 1, w: 2, h: 1 }];
+    /* тащим панель с левой гранью 4.9 — близко к 5 */
+    const snap = computeSnap({ x: 4.9, y: 1, w: 1, h: 1 }, new Set(), 0.2);
+    expect(snap.dx).toBeCloseTo(0.1, 6);
+    expect(snap.guideX).toBeCloseTo(5, 6);
+  });
+
+  it('computeSnap: к краю крыши', () => {
+    state.roof = [
+      { x: 0, y: 0 },
+      { x: 10, y: 0 },
+      { x: 10, y: 10 },
+      { x: 0, y: 10 },
+    ];
+    state.arrayAngle = 0;
+    state.obstacles = [];
+    state.panels = [];
+    const snap = computeSnap({ x: 0.12, y: 5, w: 1, h: 1 }, new Set(), 0.3);
+    expect(snap.dx).toBeCloseTo(-0.12, 6);
+    expect(snap.guideX).toBeCloseTo(0, 6);
+  });
+
+  it('computeSnap: вне порога — нет снапа, игнор работает', () => {
+    state.roof = [
+      { x: 0, y: 0 },
+      { x: 20, y: 0 },
+      { x: 20, y: 20 },
+      { x: 0, y: 20 },
+    ];
+    state.arrayAngle = 0;
+    state.obstacles = [];
+    state.panels = [
+      { x: 3, y: 1, w: 2, h: 1 },
+      { x: 8, y: 8, w: 1, h: 1 },
+    ];
+    /* снап к панели 1 игнорируется */
+    const snap = computeSnap({ x: 5.05, y: 1, w: 1, h: 1 }, new Set([0]), 0.2);
+    expect(snap.dx).toBe(0);
+    /* а к панели 2 — тоже нет (далеко) */
+    expect(snap.guideX).toBeNull();
+  });
+
+  it('panelsBBox: bbox набора', () => {
+    state.panels = [
+      { x: 1, y: 1, w: 2, h: 1 },
+      { x: 5, y: 3, w: 1, h: 2 },
+    ];
+    const bb = panelsBBox([0, 1])!;
+    expect(bb.x).toBe(1);
+    expect(bb.y).toBe(1);
+    expect(bb.w).toBe(5);
+    expect(bb.h).toBe(4);
   });
 });

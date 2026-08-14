@@ -199,6 +199,14 @@
         <div id="rotRow" class="card p-3 hidden">
           <div class="flex justify-between text-[11px] text-slate-500 mb-1"><span>Поворот выбранных панелей</span><b id="valRot" class="text-white">0°</b></div>
           <input type="range" min="-180" max="180" step="5" class="w-full" id="inRot" value="0">
+          <div class="flex gap-1 mt-2">
+            <button class="btn btn-ghost flex-1 justify-center text-[13px] py-1.5" id="alLeft" title="Выровнять по левому краю">⬅</button>
+            <button class="btn btn-ghost flex-1 justify-center text-[13px] py-1.5" id="alRight" title="Выровнять по правому краю">➡</button>
+            <button class="btn btn-ghost flex-1 justify-center text-[13px] py-1.5" id="alTop" title="Выровнять по верхнему краю">⬆</button>
+            <button class="btn btn-ghost flex-1 justify-center text-[13px] py-1.5" id="alBottom" title="Выровнять по нижнему краю">⬇</button>
+            <button class="btn btn-ghost flex-1 justify-center text-[13px] py-1.5" id="alH" title="Распределить по горизонтали">↔</button>
+            <button class="btn btn-ghost flex-1 justify-center text-[13px] py-1.5" id="alV" title="Распределить по вертикали">↕</button>
+          </div>
         </div>
         <button class="btn btn-ghost w-full justify-center" id="btnRotateSel">⟳ Повернуть выбранную</button>
         <button class="btn btn-ghost w-full justify-center" id="btnClearPanels">🗑 Очистить панели</button>

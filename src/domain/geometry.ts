@@ -281,6 +281,71 @@ export function localPolyBBox(poly: Point[], angleDeg: number): { minX: number; 
   return { minX: a, minY: b, maxX: c, maxY: d };
 }
 
+/* ═══ СНАП-НАПРАВЛЯЮЩИЕ ═══ */
+
+export interface SnapResult {
+  dx: number;
+  dy: number;
+  guideX: number | null;
+  guideY: number | null;
+}
+
+/** Прилипание rect к краям/центрам других панелей и крыши (в локальных координатах массива) */
+export function computeSnap(rect: Rect, ignoreIndices: Set<number>, threshold: number): SnapResult {
+  const candX: number[] = [];
+  const candY: number[] = [];
+  state.panels.forEach((p, i) => {
+    if (ignoreIndices.has(i)) return;
+    candX.push(p.x, p.x + p.w, p.x + p.w / 2);
+    candY.push(p.y, p.y + p.h, p.y + p.h / 2);
+  });
+  if (state.roof.length) {
+    const bb = roofBBox();
+    candX.push(bb.minX, bb.maxX, (bb.minX + bb.maxX) / 2);
+    candY.push(bb.minY, bb.maxY, (bb.minY + bb.maxY) / 2);
+  }
+  const rectEdgesX = [rect.x, rect.x + rect.w, rect.x + rect.w / 2];
+  const rectEdgesY = [rect.y, rect.y + rect.h, rect.y + rect.h / 2];
+
+  let bestX: { d: number; guide: number } | null = null;
+  for (const ce of candX) {
+    for (const re of rectEdgesX) {
+      const d = ce - re;
+      if (Math.abs(d) < threshold && (!bestX || Math.abs(d) < Math.abs(bestX.d))) bestX = { d, guide: ce };
+    }
+  }
+  let bestY: { d: number; guide: number } | null = null;
+  for (const ce of candY) {
+    for (const re of rectEdgesY) {
+      const d = ce - re;
+      if (Math.abs(d) < threshold && (!bestY || Math.abs(d) < Math.abs(bestY.d))) bestY = { d, guide: ce };
+    }
+  }
+  return {
+    dx: bestX ? bestX.d : 0,
+    dy: bestY ? bestY.d : 0,
+    guideX: bestX ? bestX.guide : null,
+    guideY: bestY ? bestY.guide : null,
+  };
+}
+
+/** Локальный bbox набора панелей */
+export function panelsBBox(indices: number[]): Rect | null {
+  let a = 1e9, b = 1e9, c = -1e9, d = -1e9;
+  let any = false;
+  indices.forEach((i) => {
+    const p = state.panels[i];
+    if (!p) return;
+    any = true;
+    a = Math.min(a, p.x);
+    b = Math.min(b, p.y);
+    c = Math.max(c, p.x + p.w);
+    d = Math.max(d, p.y + p.h);
+  });
+  if (!any) return null;
+  return { x: a, y: b, w: c - a, h: d - b };
+}
+
 /** Ряд панелей: от якоря вдоль доминирующей оси до точки `to` (включительно) */
 export function computeRowRects(anchor: Rect, to: Point, gap: number): Rect[] {
   const horizontal = Math.abs(to.x - anchor.x) >= Math.abs(to.y - anchor.y);

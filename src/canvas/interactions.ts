@@ -4,7 +4,7 @@ import { state } from '../core/state';
 import { flushSave } from '../core/projects';
 import type { Point } from '../core/types';
 import { clamp, el, nf, num0, toast } from '../core/utils';
-import { computeRowRects, localToWorld, orthSnap, panelDims, panelTotalAngle, panelsInRect, pruneInvalid, selfIntersects, validRect, worldToLocal } from '../domain/geometry';
+import { computeRowRects, computeSnap, localToWorld, orthSnap, panelDims, panelTotalAngle, panelsBBox, panelsInRect, pruneInvalid, selfIntersects, validRect, worldToLocal } from '../domain/geometry';
 import { setTool, updateOrthUI } from '../ui/toolbar';
 import { handleCalibClick } from '../ui/bg';
 import { closeMapMode, syncMapCenterFromView } from '../ui/map-browser';
@@ -150,6 +150,17 @@ function handleDown(e: PointerEvent): void {
   if (state.tool === 'hand') {
     /* Инструмент «Панорама»: драг = движение карты/схемы */
     R.drag = { type: 'pan', sx: e.clientX, sy: e.clientY, ox: R.view.ox, oy: R.view.oy };
+    return;
+  }
+  if (state.tool === 'ruler') {
+    if (!R.ruler || !R.ruler.p1 || (R.ruler.p1 && R.ruler.p2)) {
+      R.ruler = { p1: m, p2: null };
+    } else {
+      R.ruler.p2 = m;
+      const dist = Math.hypot(m.x - R.ruler.p1.x, m.y - R.ruler.p1.y);
+      toast('Расстояние: ' + nf(dist, 2) + ' м');
+    }
+    draw();
     return;
   }
   if (state.tool === 'roof') {
@@ -331,8 +342,20 @@ function handleMove(e: PointerEvent): void {
     }
     case 'multi': {
       const lm = worldToLocal(m, state.arrayAngle);
-      const dx = lm.x - d.start.x;
-      const dy = lm.y - d.start.y;
+      let dx = lm.x - d.start.x;
+      let dy = lm.y - d.start.y;
+      /* Снап группы по её bbox */
+      const bb = panelsBBox(R.multi);
+      if (bb) {
+        const snap = computeSnap({ x: bb.x + dx, y: bb.y + dy, w: bb.w, h: bb.h }, new Set(R.multi), 10 / R.view.s);
+        if (snap.dx || snap.dy) {
+          dx += snap.dx;
+          dy += snap.dy;
+          R.snapGuides = { x: snap.guideX, y: snap.guideY };
+        } else {
+          R.snapGuides = null;
+        }
+      }
       R.multi.forEach((pi, k) => {
         const p = state.panels[pi];
         if (p && d.snaps[k]) {
@@ -351,8 +374,20 @@ function handleMove(e: PointerEvent): void {
       const p = state.panels[d.i];
       if (p) {
         const lm = worldToLocal(m, state.arrayAngle);
-        p.x = Math.round((d.sx + (lm.x - d.lmx)) / 0.1) * 0.1;
-        p.y = Math.round((d.sy + (lm.y - d.lmy)) / 0.1) * 0.1;
+        let nx = Math.round((d.sx + (lm.x - d.lmx)) / 0.1) * 0.1;
+        let ny = Math.round((d.sy + (lm.y - d.lmy)) / 0.1) * 0.1;
+        p.x = nx;
+        p.y = ny;
+        /* Снап к краям других панелей и крыши */
+        const snap = computeSnap({ x: nx, y: ny, w: p.w, h: p.h }, new Set([d.i]), 10 / R.view.s);
+        if (snap.dx || snap.dy) {
+          /* примагниченные координаты точные — без округления (иначе нахлёст/разрыв) */
+          p.x = nx + snap.dx;
+          p.y = ny + snap.dy;
+          R.snapGuides = { x: snap.guideX, y: snap.guideY };
+        } else {
+          R.snapGuides = null;
+        }
         draw();
       }
       break;
@@ -483,6 +518,7 @@ function handleUp(e: PointerEvent): void {
     if (removed) toast('Удалено перекрытых панелей: ' + removed);
   }
   R.drag = null;
+  R.snapGuides = null;
   commit();
   flushSave();
   events.refresh();
@@ -698,6 +734,7 @@ export function setupCanvasInteractions(): void {
     if (k === 'o') setTool('obstacle');
     if (k === 'e') setTool('erase');
     if (k === 'h') setTool('hand');
+    if (k === 'm') setTool('ruler');
     if (k === 'r' && R.sel && R.sel.type === 'panel') rotateSel();
     if (k === ' ') {
       e.preventDefault();
@@ -724,6 +761,8 @@ export function setupCanvasInteractions(): void {
       R.multi = [];
       R.marquee = null;
       R.ghostRow = null;
+      R.ruler = null;
+      R.snapGuides = null;
       draw();
       events.refresh();
     }

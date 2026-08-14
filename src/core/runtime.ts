@@ -28,6 +28,8 @@ export const R = {
   marquee: null as { x1: number; y1: number; x2: number; y2: number } | null,
   spaceDown: false as boolean,
   mapMode: null as { lat: number; lng: number; zoom: number; regionId: string } | null,
+  snapGuides: null as { x: number | null; y: number | null } | null,
+  ruler: null as { p1: Point | null; p2: Point | null } | null,
 };
 
 export const events = {

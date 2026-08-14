@@ -4,7 +4,7 @@ import { state } from '../core/state';
 import { el, fmtHour, nf } from '../core/utils';
 import { localToWorld, orthSnap, panelTotalAngle, roofBBox, validRect } from '../domain/geometry';
 import { currentShadowScene, panelShade } from '../domain/solar';
-import { stringAssignments } from '../domain/simulation';
+import { stringAssignments, stringParams } from '../domain/simulation';
 import { getBgImage } from '../ui/bg';
 import { getCurrentEdges, clipLineToRect } from '../core/edge-detect';
 import { ensureTile, getCachedTile } from '../ui/map-browser';
@@ -365,8 +365,70 @@ export function draw(): void {
     ctx.restore();
   });
 
+  /* Снап-направляющие */
+  if (R.snapGuides) {
+    const g = R.snapGuides;
+    ctx.setLineDash([8, 6]);
+    ctx.strokeStyle = '#f472b6';
+    ctx.lineWidth = 1;
+    if (g.x !== null) {
+      const p1 = localToWorld({ x: g.x, y: -500 }, state.arrayAngle);
+      const p2 = localToWorld({ x: g.x, y: 500 }, state.arrayAngle);
+      const [a1, b1] = m2s(p1.x, p1.y);
+      const [a2, b2] = m2s(p2.x, p2.y);
+      ctx.beginPath();
+      ctx.moveTo(a1, b1);
+      ctx.lineTo(a2, b2);
+      ctx.stroke();
+    }
+    if (g.y !== null) {
+      const p1 = localToWorld({ x: -500, y: g.y }, state.arrayAngle);
+      const p2 = localToWorld({ x: 500, y: g.y }, state.arrayAngle);
+      const [a1, b1] = m2s(p1.x, p1.y);
+      const [a2, b2] = m2s(p2.x, p2.y);
+      ctx.beginPath();
+      ctx.moveTo(a1, b1);
+      ctx.lineTo(a2, b2);
+      ctx.stroke();
+    }
+    ctx.setLineDash([]);
+  }
+
+  /* Линейка */
+  if (R.ruler) {
+    const drawPt = (p: { x: number; y: number }, color: string): void => {
+      const [px, py] = m2s(p.x, p.y);
+      ctx.beginPath();
+      ctx.arc(px, py, 5, 0, 7);
+      ctx.fillStyle = color;
+      ctx.fill();
+    };
+    if (R.ruler.p1) {
+      drawPt(R.ruler.p1, '#fbbf24');
+      if (R.ruler.p2) {
+        drawPt(R.ruler.p2, '#fbbf24');
+        const [a1, b1] = m2s(R.ruler.p1.x, R.ruler.p1.y);
+        const [a2, b2] = m2s(R.ruler.p2.x, R.ruler.p2.y);
+        ctx.setLineDash([6, 4]);
+        ctx.strokeStyle = '#fbbf24';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(a1, b1);
+        ctx.lineTo(a2, b2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        const d = Math.hypot(R.ruler.p2.x - R.ruler.p1.x, R.ruler.p2.y - R.ruler.p1.y);
+        ctx.fillStyle = '#fbbf24';
+        ctx.font = '700 12px Manrope';
+        ctx.textAlign = 'center';
+        ctx.fillText(nf(d, 2) + ' м', (a1 + a2) / 2, (b1 + b2) / 2 - 8);
+      }
+    }
+  }
+
   /* Легенда стрингов */
   if (assignments) {
+    const params = stringParams();
     let maxStr = 0;
     assignments.forEach((s) => {
       if (s > maxStr) maxStr = s;
@@ -374,11 +436,16 @@ export function draw(): void {
     ctx.font = '700 11px Manrope';
     ctx.textAlign = 'left';
     for (let s = 0; s <= maxStr; s++) {
-      const y = 16 + s * 22;
+      const y = 16 + s * 24;
       ctx.fillStyle = STRING_PALETTE[s % STRING_PALETTE.length];
       ctx.fillRect(16, y, 12, 12);
       ctx.fillStyle = '#cbd5e1';
-      ctx.fillText('Стринг ' + (s + 1), 34, y + 10);
+      const p = params && params[s];
+      ctx.fillText(
+        'Стринг ' + (s + 1) + (p ? ' · ' + p.count + ' пан. · ' + p.vmpV + ' В · ' + p.impA + ' А' : ''),
+        34,
+        y + 10,
+      );
     }
   }
 

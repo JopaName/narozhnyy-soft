@@ -7,7 +7,7 @@ import { rotateSel } from '../canvas/interactions';
 import { draw } from '../canvas/renderer';
 import { scheduleShading } from '../domain/solar';
 import { downloadPdf } from './pdf';
-import { stringCalc } from '../domain/simulation';
+import { stringCalc, stringParams } from '../domain/simulation';
 import { autoLayout, setTool, updateOrthUI } from './toolbar';
 import { syncBgUI } from './bg';
 
@@ -236,6 +236,57 @@ export function bindInputs(): void {
     flushSave();
   });
   el('btnRotateSel').onclick = () => rotateSel();
+
+  /* Выравнивание выделенных панелей */
+  const align = (mode: string): void => {
+    const idx = R.multi.length ? R.multi : R.sel && R.sel.type === 'panel' ? [R.sel.i] : [];
+    if (idx.length < 2) {
+      toast('Выделите минимум 2 панели');
+      return;
+    }
+    const rects = idx.map((i) => state.panels[i]);
+    if (mode === 'left') {
+      const l = Math.min(...rects.map((r) => r.x));
+      rects.forEach((r) => (r.x = l));
+    } else if (mode === 'right') {
+      const mx = Math.max(...rects.map((r) => r.x + r.w));
+      rects.forEach((r) => (r.x = mx - r.w));
+    } else if (mode === 'top') {
+      const t = Math.min(...rects.map((r) => r.y));
+      rects.forEach((r) => (r.y = t));
+    } else if (mode === 'bottom') {
+      const mb = Math.max(...rects.map((r) => r.y + r.h));
+      rects.forEach((r) => (r.y = mb - r.h));
+    } else if (mode === 'h') {
+      const sorted = [...rects].sort((a, b) => a.x + a.w / 2 - (b.x + b.w / 2));
+      const minC = sorted[0].x + sorted[0].w / 2;
+      const maxC = sorted[sorted.length - 1].x + sorted[sorted.length - 1].w / 2;
+      const step = (maxC - minC) / (sorted.length - 1);
+      sorted.forEach((r, i) => {
+        const c = minC + step * i;
+        r.x = c - r.w / 2;
+      });
+    } else if (mode === 'v') {
+      const sorted = [...rects].sort((a, b) => a.y + a.h / 2 - (b.y + b.h / 2));
+      const minC = sorted[0].y + sorted[0].h / 2;
+      const maxC = sorted[sorted.length - 1].y + sorted[sorted.length - 1].h / 2;
+      const step = (maxC - minC) / (sorted.length - 1);
+      sorted.forEach((r, i) => {
+        const c = minC + step * i;
+        r.y = c - r.h / 2;
+      });
+    }
+    commit();
+    flushSave();
+    events.refresh();
+    draw();
+  };
+  el('alLeft').onclick = () => align('left');
+  el('alRight').onclick = () => align('right');
+  el('alTop').onclick = () => align('top');
+  el('alBottom').onclick = () => align('bottom');
+  el('alH').onclick = () => align('h');
+  el('alV').onclick = () => align('v');
   el('btnClearPanels').onclick = () => {
     if (!state.panels.length) return;
     state.panels = [];
@@ -324,6 +375,30 @@ export function renderStrings(): void {
         '</b></div>',
     )
     .join('');
+
+  /* По-стринговые параметры: вольты и амперы */
+  const params = stringParams();
+  if (params) {
+    el('stringInfo').innerHTML +=
+      '<div class="border-t border-slate-800 mt-2 pt-2 space-y-1">' +
+      params
+        .map(
+          (p, i) =>
+            '<div class="flex justify-between"><span class="text-slate-400">Стринг ' +
+            (i + 1) +
+            '</span><b class="text-white">' +
+            p.count +
+            ' пан. · ' +
+            p.vmpV +
+            ' В (Vmp) · ' +
+            p.vocV +
+            ' В (Voc) · ' +
+            p.impA +
+            ' А</b></div>',
+        )
+        .join('') +
+      '</div>';
+  }
   const issues: [string, string][] = [];
   if (!sc.curOK) issues.push(['rose', '✕ Ток панели превышает лимит входа MPPT — возьмите инвертор с большим током']);
   if (sc.strings < sc.inv.mppt) issues.push(['amber', '⚠ Стрингов меньше, чем MPPT: часть трекеров будет пустовать']);

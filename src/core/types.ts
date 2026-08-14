@@ -19,7 +19,7 @@ export interface PanelRect extends Rect {
   a?: number;
 }
 
-export type Tool = 'select' | 'roof' | 'panel' | 'row' | 'obstacle' | 'erase' | 'hand';
+export type Tool = 'select' | 'roof' | 'panel' | 'row' | 'obstacle' | 'erase' | 'hand' | 'ruler';
 export type Orientation = 'portrait' | 'landscape';
 export type Financing = 'cash' | 'loan';
 

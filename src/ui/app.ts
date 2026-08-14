@@ -65,11 +65,14 @@ export function refresh(): void {
   const obSel = R.sel && R.sel.type === 'obstacle' ? state.obstacles[R.sel.i] : null;
   el('obZRow').classList.toggle('hidden', !obSel);
   if (obSel && document.activeElement !== el('inObZ')) el<HTMLInputElement>('inObZ').value = String(obSel.z || 1);
-  /* Инфо о выбранной панели: номер и стринг */
+  /* Инфо о выбранной панели: номер, стринг и его вольтаж */
   if (R.sel && R.sel.type === 'panel') {
     const sc = stringCalc();
     if (sc) {
-      el('stTool').textContent = 'Панель ' + (R.sel.i + 1) + ' · Стринг ' + (Math.floor(R.sel.i / sc.per) + 1) + '/' + sc.strings;
+      const str = Math.floor(R.sel.i / sc.per);
+      const vmp = Math.round(sc.per * sc.md.Vmp * 10) / 10;
+      el('stTool').textContent =
+        'Панель ' + (R.sel.i + 1) + ' · Стринг ' + (str + 1) + '/' + sc.strings + ' · ' + vmp + ' В · ' + sc.md.Imp + ' А';
     }
   }
   /* Слайдер поворота выбранных панелей */
