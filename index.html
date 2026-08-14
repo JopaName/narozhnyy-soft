@@ -196,6 +196,10 @@
         </div>
       </div>
       <div class="space-y-2">
+        <div id="rotRow" class="card p-3 hidden">
+          <div class="flex justify-between text-[11px] text-slate-500 mb-1"><span>Поворот выбранных панелей</span><b id="valRot" class="text-white">0°</b></div>
+          <input type="range" min="-180" max="180" step="5" class="w-full" id="inRot" value="0">
+        </div>
         <button class="btn btn-ghost w-full justify-center" id="btnRotateSel">⟳ Повернуть выбранную</button>
         <button class="btn btn-ghost w-full justify-center" id="btnClearPanels">🗑 Очистить панели</button>
         <button class="btn w-full justify-center bg-rose-500/10 text-rose-400 hover:bg-rose-500/20" id="btnReset">✕ Сбросить всё</button>

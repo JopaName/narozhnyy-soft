@@ -4,7 +4,7 @@ import { state } from '../core/state';
 import type { AppState, Point } from '../core/types';
 import { clamp } from '../core/utils';
 import { resolveState } from './simulation';
-import { hull, panelWorldCorners, pointInPoly } from './geometry';
+import { hull, localToWorld, pointInPoly } from './geometry';
 
 export interface SunPos {
   alt: number;
@@ -64,9 +64,19 @@ export function computeShading(overrides?: Partial<AppState>): number[] {
     if (!overrides) state.shadeLoss = loss;
     return loss;
   }
-  /* Углы панелей в мировых координатах (массив может быть повёрнут) + их bbox */
+  /* Углы панелей в мировых координатах (свой угол у каждой) + их bbox */
   const panelData = s.panels.map((p) => {
-    const pts = panelWorldCorners(p, s.arrayAngle);
+    const base = localToWorld({ x: p.x, y: p.y }, s.arrayAngle);
+    const total = s.arrayAngle + (p.a || 0);
+    const pts = [
+      [0, 0],
+      [p.w, 0],
+      [p.w, p.h],
+      [0, p.h],
+    ].map(([lx, ly]) => {
+      const o = localToWorld({ x: lx, y: ly }, total);
+      return { x: base.x + o.x, y: base.y + o.y };
+    });
     let a = 1e9, b = 1e9, c = -1e9, d2 = -1e9;
     pts.forEach((q) => {
       a = Math.min(a, q.x);

@@ -7,7 +7,9 @@ import {
   localToWorld,
   orthSnap,
   panelDims,
+  panelTotalAngle,
   panelWorldCorners,
+  panelWorldCorners2,
   panelsInRect,
   pointInPoly,
   polyArea,
@@ -461,5 +463,54 @@ describe('поворот массива', () => {
     expect(validRect({ x: 3, y: 3, w: 2, h: 2 })).toBe(false);
     state.obstacles = [{ x: 8, y: 8, w: 1, h: 1, z: 2 }];
     expect(validRect({ x: 3, y: 3, w: 2, h: 2 })).toBe(true);
+  });
+
+  it('panelWorldCorners2: собственный угол панели вращается вокруг базы', () => {
+    state.arrayAngle = 0;
+    const c = panelWorldCorners2({ x: 5, y: 5, w: 2, h: 1, a: 30 });
+    /* база (5,5) + R(30°)·offset */
+    expect(c[0].x).toBeCloseTo(5, 9);
+    expect(c[0].y).toBeCloseTo(5, 9);
+    expect(c[1].x).toBeCloseTo(5 + 1.7321, 3);
+    expect(c[1].y).toBeCloseTo(6, 3);
+    expect(c[3].x).toBeCloseTo(4.5, 3);
+    expect(c[3].y).toBeCloseTo(5.866, 3);
+  });
+
+  it('panelTotalAngle = угол массива + a', () => {
+    state.arrayAngle = 20;
+    expect(panelTotalAngle({ x: 0, y: 0, w: 1, h: 1, a: 30 })).toBe(50);
+    expect(panelTotalAngle({ x: 0, y: 0, w: 1, h: 1 })).toBe(20);
+  });
+
+  it('validRect: панели с разными углами — SAT, с одинаковыми — локальное пересечение', () => {
+    state.roof = [
+      { x: 0, y: 0 },
+      { x: 10, y: 0 },
+      { x: 10, y: 10 },
+      { x: 0, y: 10 },
+    ];
+    state.arrayAngle = 0;
+    state.obstacles = [];
+    /* первая панель без поворота */
+    state.panels = [{ x: 3, y: 3, w: 2, h: 1 }];
+    /* вторая повёрнута на 90° и лежит на первой → пересечение (SAT) */
+    expect(validRect({ x: 3.4, y: 3.4, w: 2, h: 1, a: 90 })).toBe(false);
+    /* рядом — не пересекается */
+    expect(validRect({ x: 7, y: 7, w: 1, h: 1, a: 90 })).toBe(true);
+  });
+
+  it('validRect: повёрнутая панель частично вне крыши — невалидна', () => {
+    state.roof = [
+      { x: 0, y: 0 },
+      { x: 6, y: 0 },
+      { x: 6, y: 6 },
+      { x: 0, y: 6 },
+    ];
+    state.arrayAngle = 0;
+    state.obstacles = [];
+    state.panels = [];
+    /* (4.5,4.5) с поворотом 45°: дальний угол вылезает за 6×6 */
+    expect(validRect({ x: 4.5, y: 4.5, w: 2, h: 1, a: 45 })).toBe(false);
   });
 });

@@ -61,7 +61,18 @@ export function sanitize(o: Record<string, unknown>): AppState {
   const s: AppState = { ...state, shadeLoss: new Array(12).fill(0), roof: [], panels: [], obstacles: [], tempRoof: [] };
   s.roof = Array.isArray(o.roof) ? o.roof.filter(okPt).slice(0, 40) : [];
   if (s.roof.length < 3) s.roof = [];
-  s.panels = Array.isArray(o.panels) ? o.panels.filter(okRect).slice(0, MAX_PANELS) : [];
+  s.panels = Array.isArray(o.panels)
+    ? (o.panels as Array<Record<string, unknown>>)
+        .filter(okRect)
+        .slice(0, MAX_PANELS)
+        .map((p) => ({
+          x: Number(p.x),
+          y: Number(p.y),
+          w: Number(p.w),
+          h: Number(p.h),
+          a: clamp(parseFloat(String(p.a)) || 0, -180, 180),
+        }))
+    : [];
   s.obstacles = Array.isArray(o.obstacles)
     ? o.obstacles
         .filter(okRectLike)

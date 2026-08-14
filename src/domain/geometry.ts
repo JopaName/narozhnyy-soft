@@ -95,26 +95,73 @@ export function panelDims(): { w: number; h: number } {
   return state.orientation === 'portrait' ? { w: md.h, h: md.w } : { w: md.w, h: md.h };
 }
 
-export function validRect(r: Rect, ignore = -1): boolean {
-  if (!r || !isFinite(r.x) || !isFinite(r.y) || r.w <= 0 || r.h <= 0) return false;
-  if (!state.roof.length || !rotatedRectInPoly(r, state.arrayAngle, state.roof)) return false;
-  /* препятствия — в мировых координатах: SAT против повёрнутых углов */
-  if (state.arrayAngle !== 0) {
-    const corners = panelWorldCorners(r, state.arrayAngle);
-    for (const o of state.obstacles) {
-      const oc = [
-        { x: o.x, y: o.y },
-        { x: o.x + o.w, y: o.y },
-        { x: o.x + o.w, y: o.y + o.h },
-        { x: o.x, y: o.y + o.h },
-      ];
-      if (satOverlap(corners, oc)) return false;
-    }
-  } else {
-    if (state.obstacles.some((o) => rectsOverlap(r, o))) return false;
+/** Итоговый угол панели в мире: угол массива + индивидуальный поворот */
+export function panelTotalAngle(p: Rect & { a?: number }): number {
+  return state.arrayAngle + (p.a || 0);
+}
+
+/** Мировые углы панели с учётом двухступенчатого трансформа:
+ *  позиция (x,y) живёт в пространстве массива, собственный угол крутится вокруг позиции. */
+export function panelWorldCorners2(r: Rect & { a?: number }): Point[] {
+  const base = localToWorld({ x: r.x, y: r.y }, state.arrayAngle);
+  const total = panelTotalAngle(r);
+  const out: Point[] = [];
+  for (const [lx, ly] of [
+    [0, 0],
+    [r.w, 0],
+    [r.w, r.h],
+    [0, r.h],
+  ] as const) {
+    const o = localToWorld({ x: lx, y: ly }, total);
+    out.push({ x: base.x + o.x, y: base.y + o.y });
   }
-  /* все панели в одном (локальном) пространстве — обычное пересечение */
-  return !state.panels.some((p, i) => i !== ignore && rectsOverlap(r, p));
+  return out;
+}
+
+/** Повёрнутая панель внутри полигона: углы + центр + середины рёбер (двухступенчатый трансформ) */
+export function rotatedPanelInPoly(r: Rect & { a?: number }, poly: Point[]): boolean {
+  const base = localToWorld({ x: r.x, y: r.y }, state.arrayAngle);
+  const total = panelTotalAngle(r);
+  const samples: [number, number][] = [
+    [0, 0],
+    [r.w, 0],
+    [r.w, r.h],
+    [0, r.h],
+    [r.w / 2, r.h / 2],
+    [r.w / 2, 0],
+    [0, r.h / 2],
+    [r.w, r.h / 2],
+    [r.w / 2, r.h],
+  ];
+  for (const [lx, ly] of samples) {
+    const o = localToWorld({ x: lx, y: ly }, total);
+    if (!pointInPoly(base.x + o.x, base.y + o.y, poly)) return false;
+  }
+  return true;
+}
+
+export function validRect(r: Rect & { a?: number }, ignore = -1): boolean {
+  if (!r || !isFinite(r.x) || !isFinite(r.y) || r.w <= 0 || r.h <= 0) return false;
+  if (!state.roof.length || !rotatedPanelInPoly(r, state.roof)) return false;
+  /* препятствия — в мировых координатах: SAT против повёрнутых углов */
+  const corners = panelWorldCorners2(r);
+  if (state.obstacles.some((o) => satOverlap(corners, [
+    { x: o.x, y: o.y },
+    { x: o.x + o.w, y: o.y },
+    { x: o.x + o.w, y: o.y + o.h },
+    { x: o.x, y: o.y + o.h },
+  ]))) return false;
+  /* панель-панель: одинаковые углы — локальное axis-aligned, иначе SAT */
+  for (let i = 0; i < state.panels.length; i++) {
+    if (i === ignore) continue;
+    const p = state.panels[i];
+    if (Math.abs(panelTotalAngle(p) - panelTotalAngle(r)) < 1e-9) {
+      if (rectsOverlap(r, p)) return false;
+    } else {
+      if (satOverlap(corners, panelWorldCorners2(p))) return false;
+    }
+  }
+  return true;
 }
 
 export function pruneInvalid(): number {

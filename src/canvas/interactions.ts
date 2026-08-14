@@ -4,7 +4,7 @@ import { state } from '../core/state';
 import { flushSave } from '../core/projects';
 import type { Point } from '../core/types';
 import { clamp, el, nf, num0, toast } from '../core/utils';
-import { computeRowRects, orthSnap, panelDims, panelsInRect, pruneInvalid, selfIntersects, validRect, worldToLocal } from '../domain/geometry';
+import { computeRowRects, localToWorld, orthSnap, panelDims, panelTotalAngle, panelsInRect, pruneInvalid, selfIntersects, validRect, worldToLocal } from '../domain/geometry';
 import { setTool, updateOrthUI } from '../ui/toolbar';
 import { handleCalibClick } from '../ui/bg';
 import { closeMapMode, syncMapCenterFromView } from '../ui/map-browser';
@@ -16,11 +16,13 @@ import { s2m } from './view';
 
 /* ═══ ХИТЫ ═══ */
 export function hitPanel(m: Point): number {
-  /* курсор в мировых координатах → локальные координаты массива */
-  const lm = worldToLocal(m, state.arrayAngle);
   for (let i = state.panels.length - 1; i >= 0; i--) {
     const p = state.panels[i];
-    if (lm.x >= p.x - 1e-9 && lm.x <= p.x + p.w + 1e-9 && lm.y >= p.y - 1e-9 && lm.y <= p.y + p.h + 1e-9) return i;
+    /* Панель живёт в пространстве массива: база + собственный поворот вокруг базы */
+    const base = localToWorld({ x: p.x, y: p.y }, state.arrayAngle);
+    const t = { x: m.x - base.x, y: m.y - base.y };
+    const lm = worldToLocal(t, panelTotalAngle(p));
+    if (lm.x >= -1e-9 && lm.x <= p.w + 1e-9 && lm.y >= -1e-9 && lm.y <= p.h + 1e-9) return i;
   }
   return -1;
 }

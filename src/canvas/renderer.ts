@@ -2,7 +2,7 @@ import { MONTHS } from '../core/data';
 import { events, R } from '../core/runtime';
 import { state } from '../core/state';
 import { el, fmtHour, nf } from '../core/utils';
-import { localToWorld, orthSnap, roofBBox, validRect } from '../domain/geometry';
+import { localToWorld, orthSnap, panelTotalAngle, roofBBox, validRect } from '../domain/geometry';
 import { currentShadowScene, panelShade } from '../domain/solar';
 import { stringAssignments } from '../domain/simulation';
 import { getBgImage } from '../ui/bg';
@@ -308,9 +308,10 @@ export function draw(): void {
     ctx.setLineDash([]);
   }
 
-  const angleRad = (state.arrayAngle * Math.PI) / 180;
   const assignments = state.showStrings ? stringAssignments() : null;
   state.panels.forEach((p, i) => {
+    const angle = panelTotalAngle(p);
+    const angleRad = (angle * Math.PI) / 180;
     const w0 = localToWorld({ x: p.x, y: p.y }, state.arrayAngle);
     const [px, py] = m2s(w0.x, w0.y);
     const pw = p.w * R.view.s - 1;
@@ -413,7 +414,7 @@ export function draw(): void {
     const [px, py] = m2s(w0.x, w0.y);
     ctx.save();
     ctx.translate(px, py);
-    ctx.rotate(angleRad);
+    ctx.rotate((state.arrayAngle * Math.PI) / 180);
     const pw = g.w * R.view.s - 1;
     const ph = g.h * R.view.s - 1;
     ctx.fillStyle = g.valid ? 'rgba(34,197,94,.16)' : 'rgba(248,113,113,.16)';
@@ -433,7 +434,7 @@ export function draw(): void {
       const [px, py] = m2s(w0.x, w0.y);
       ctx.save();
       ctx.translate(px, py);
-      ctx.rotate(angleRad);
+      ctx.rotate((state.arrayAngle * Math.PI) / 180);
       const pw = g.w * R.view.s - 1;
       const ph = g.h * R.view.s - 1;
       ctx.fillStyle = g.valid ? 'rgba(34,197,94,.14)' : 'rgba(248,113,113,.14)';

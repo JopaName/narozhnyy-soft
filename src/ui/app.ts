@@ -72,6 +72,20 @@ export function refresh(): void {
       el('stTool').textContent = 'Панель ' + (R.sel.i + 1) + ' · Стринг ' + (Math.floor(R.sel.i / sc.per) + 1) + '/' + sc.strings;
     }
   }
+  /* Слайдер поворота выбранных панелей */
+  const hasPanelSel = R.sel !== null && R.sel.type === 'panel';
+  const rotRow = el('rotRow');
+  if (hasPanelSel || R.multi.length > 0) {
+    rotRow.classList.remove('hidden');
+    const firstIdx = hasPanelSel ? (R.sel as { i: number }).i : R.multi[0];
+    const p = state.panels[firstIdx];
+    if (p && document.activeElement !== el('inRot')) {
+      el<HTMLInputElement>('inRot').value = String(p.a || 0);
+    }
+    el('valRot').textContent = (p?.a || 0) + '°';
+  } else {
+    rotRow.classList.add('hidden');
+  }
   renderBattery();
   renderStrings();
   renderLoan();

@@ -14,7 +14,10 @@ export interface Obstacle extends Rect {
   z: number;
 }
 
-export interface PanelRect extends Rect {}
+export interface PanelRect extends Rect {
+  /** Индивидуальный поворот панели относительно массива, градусы */
+  a?: number;
+}
 
 export type Tool = 'select' | 'roof' | 'panel' | 'row' | 'obstacle' | 'erase' | 'hand';
 export type Orientation = 'portrait' | 'landscape';

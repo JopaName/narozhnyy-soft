@@ -219,6 +219,22 @@ export function bindInputs(): void {
     queueSave();
   };
   el('btnAuto').onclick = () => autoLayout();
+  el('inRot').addEventListener('input', (e) => {
+    const v = +(e.target as HTMLInputElement).value;
+    const set = (i: number): void => {
+      const p = state.panels[i];
+      if (p) p.a = v;
+    };
+    if (R.sel && R.sel.type === 'panel') set(R.sel.i);
+    R.multi.forEach(set);
+    el('valRot').textContent = v + '°';
+    draw();
+    scheduleShading();
+  });
+  el('inRot').addEventListener('change', () => {
+    commit();
+    flushSave();
+  });
   el('btnRotateSel').onclick = () => rotateSel();
   el('btnClearPanels').onclick = () => {
     if (!state.panels.length) return;
