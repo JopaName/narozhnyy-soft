@@ -43,6 +43,11 @@
       <canvas id="cv" class="absolute inset-0 w-full h-full"></canvas>
       <button id="btnSidebar" title="Параметры">⚙</button>
       <button id="btnMapUse" class="btn btn-amber absolute bottom-12 left-1/2 -translate-x-1/2 z-10" style="display:none">📌 Использовать место</button>
+      <div id="zoomCtl" class="absolute right-2 bottom-14 z-10 flex flex-col gap-1">
+        <button id="btnZoomIn" class="zoom-btn" title="Приблизить">+</button>
+        <button id="btnZoomOut" class="zoom-btn" title="Отдалить">−</button>
+        <button id="btnZoomFit" class="zoom-btn" title="Вписать">⛶</button>
+      </div>
       <div id="emptyState" class="absolute inset-0 flex items-center justify-center pointer-events-none">
         <div class="card p-8 text-center max-w-sm pointer-events-auto">
           <div class="text-3xl mb-3">📐</div>

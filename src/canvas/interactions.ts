@@ -143,6 +143,11 @@ function handleDown(e: PointerEvent): void {
     R.drag = { type: 'pan', sx: e.clientX, sy: e.clientY, ox: R.view.ox, oy: R.view.oy };
     return;
   }
+  if (state.tool === 'hand') {
+    /* Инструмент «Панорама»: драг = движение карты/схемы */
+    R.drag = { type: 'pan', sx: e.clientX, sy: e.clientY, ox: R.view.ox, oy: R.view.oy };
+    return;
+  }
   if (state.tool === 'roof') {
     const now = performance.now();
     if (R.lastTap && now - R.lastTap.t < 350 && Math.hypot(e.clientX - R.lastTap.x, e.clientY - R.lastTap.y) < 25) {
@@ -540,7 +545,7 @@ export function setupCanvasInteractions(): void {
       lpFired = false;
       lpTimer = setTimeout(() => {
         lpTimer = null;
-        if (!lpLast || R.pinch) return;
+        if (!lpLast || R.pinch || R.mapMode) return;
         lpFired = true;
         R.drag = null;
         const m = s2m({ clientX: lpLast.x, clientY: lpLast.y });
@@ -687,6 +692,7 @@ export function setupCanvasInteractions(): void {
     if (k === 'f') setTool('row');
     if (k === 'o') setTool('obstacle');
     if (k === 'e') setTool('erase');
+    if (k === 'h') setTool('hand');
     if (k === 'r' && R.sel && R.sel.type === 'panel') rotateSel();
     if (k === ' ') {
       e.preventDefault();

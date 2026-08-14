@@ -20,6 +20,8 @@ const ICONS: Record<string, string> = {
     '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="1"/><path d="M7 7l10 10M17 7L7 17"/></svg>',
   erase:
     '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 20H8L3 15a2 2 0 010-3l9-9 9 9-8 8"/></svg>',
+  hand:
+    '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11V5.5a1.5 1.5 0 013 0V11m0-4.5a1.5 1.5 0 013 0V11m0-3.5a1.5 1.5 0 013 0V15a6 6 0 01-6 6h-2a5 5 0 01-4-2l-2-4a1.6 1.6 0 012.4-2L9 15V5.5z"/></svg>',
   undo:
     '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 110 12h-3"/></svg>',
   redo:
@@ -35,15 +37,17 @@ const TOOL_NAMES: Record<Tool, string> = {
   row: 'Ряд панелей',
   obstacle: 'Препятствие',
   erase: 'Ластик',
+  hand: 'Панорама',
 };
 
 const HINTS: Record<Tool, string> = {
-  select: 'рамка — выделить группу; тяните панели и вершины; Space или средняя кнопка — панорама',
+  select: 'рамка — выделить группу; тяните панели и вершины; Space — панорама',
   roof: 'клики/касания — точки; ⊥ прямые углы (Alt — свободно); двойной тап — замкнуть',
   panel: 'наведение показывает превью панели; тяните мышью или пальцем, закрашивая крышу',
   row: 'клик — одна панель; тяните — ровный ряд вдоль направления, встанет до препятствия',
   obstacle: 'растяните прямоугольник (труба, люк, дерево)',
   erase: 'коснитесь панели или препятствия, чтобы удалить',
+  hand: 'тяните — перемещение по схеме/карте; колесо или два пальца — зум',
 };
 
 export function buildToolbar(): void {
@@ -55,6 +59,7 @@ export function buildToolbar(): void {
     ['row', 'Ряд панелей (F)'],
     ['obstacle', 'Препятствие (O)'],
     ['erase', 'Ластик (E)'],
+    ['hand', 'Панорама (H)'],
   ];
   tools.forEach(([id, tt]) => {
     const b = document.createElement('button');
@@ -113,7 +118,7 @@ export function setTool(t: Tool): void {
     elBtn.classList.toggle('active', elBtn.dataset.tool === t);
   });
   updateOrthUI();
-  cv.style.cursor = t === 'select' ? 'default' : 'crosshair';
+  cv.style.cursor = t === 'select' ? 'default' : t === 'hand' ? 'grab' : 'crosshair';
   el('stTool').textContent = TOOL_NAMES[t] || '';
   el('stHint').textContent = HINTS[t] || '';
 }

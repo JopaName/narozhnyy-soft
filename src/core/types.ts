@@ -16,7 +16,7 @@ export interface Obstacle extends Rect {
 
 export interface PanelRect extends Rect {}
 
-export type Tool = 'select' | 'roof' | 'panel' | 'row' | 'obstacle' | 'erase';
+export type Tool = 'select' | 'roof' | 'panel' | 'row' | 'obstacle' | 'erase' | 'hand';
 export type Orientation = 'portrait' | 'landscape';
 export type Financing = 'cash' | 'loan';
 

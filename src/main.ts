@@ -29,6 +29,7 @@ import { setupMapManager } from './ui/map-manager';
 import { setupMapButtons } from './ui/map-browser';
 import { setupMobileNav } from './ui/mobile-nav';
 import { setupContextMenu } from './ui/context-menu';
+import { setupZoomControls } from './ui/zoom-controls';
 import { setCurrentEdges, getCurrentEdges } from './core/edge-detect';
 
 events.refresh = refresh;
@@ -66,6 +67,7 @@ async function init(): Promise<void> {
     setupAddrAutocomplete();
     setupMobileNav();
     setupContextMenu();
+    setupZoomControls();
     setOpenProjectHook(openProjectRecord);
     setLoadSampleHook(loadSample);
     setTool('select');

@@ -1,4 +1,4 @@
-export const APP_VERSION = '1.11.0';
+export const APP_VERSION = '1.11.1';
 
 export interface ReleaseInfo {
   tag: string;
