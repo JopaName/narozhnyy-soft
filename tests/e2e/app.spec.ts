@@ -7,6 +7,8 @@ test.describe('Solar Studio E2E', () => {
     await page.evaluate(() => localStorage.clear());
     await page.goto('/');
     await page.waitForSelector('#toolbar', { timeout: 10000 });
+    await page.locator('#esSample').click();
+    await page.waitForTimeout(400);
   });
 
   /* ── 1. Загрузка страницы ── */

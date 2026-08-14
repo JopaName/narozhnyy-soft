@@ -45,4 +45,5 @@ export const defaultState: AppState = {
   showObstacles: true,
   locked: [],
   snapEdges: true,
+  welcomeDismissed: false,
 };

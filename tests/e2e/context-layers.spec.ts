@@ -6,6 +6,8 @@ test.describe('Контекстное меню, блокировка, слои, 
     await page.evaluate(() => localStorage.clear());
     await page.goto('/');
     await page.waitForSelector('#toolbar', { timeout: 15000 });
+    await page.locator('#esSample').click();
+    await page.waitForTimeout(400);
   });
 
   async function firstPanelCenter(page: import('@playwright/test').Page): Promise<{ x: number; y: number }> {

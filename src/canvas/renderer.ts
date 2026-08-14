@@ -544,5 +544,6 @@ export function draw(): void {
 
   ctx.restore();
   el('stZoom').textContent = Math.round((R.view.s / 22) * 100) + '%';
-  el('emptyState').style.display = state.roof.length || state.panels.length ? 'none' : 'flex';
+  el('emptyState').style.display =
+    state.roof.length || state.panels.length || state.welcomeDismissed ? 'none' : 'flex';
 }

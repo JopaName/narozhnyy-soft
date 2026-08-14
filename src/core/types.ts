@@ -100,6 +100,7 @@ export interface AppState {
   showObstacles: boolean;
   locked: number[];
   snapEdges: boolean;
+  welcomeDismissed: boolean;
 }
 
 export interface ViewState {

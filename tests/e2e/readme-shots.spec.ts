@@ -5,6 +5,8 @@ test('readme screenshots', async ({ page }) => {
   await page.evaluate(() => localStorage.clear());
   await page.reload();
   await page.waitForSelector('#toolbar', { timeout: 15000 });
+    await page.locator('#esSample').click();
+    await page.waitForTimeout(400);
   await page.waitForTimeout(2000);
 
   /* Схема с панелями */

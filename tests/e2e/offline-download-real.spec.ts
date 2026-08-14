@@ -7,6 +7,8 @@ test('реальное скачивание пакета Геленджик + о
   await page.evaluate(() => localStorage.clear());
   await page.goto('/');
   await page.waitForSelector('#toolbar', { timeout: 15000 });
+    await page.locator('#esSample').click();
+    await page.waitForTimeout(400);
 
   await page.locator('#btnMapManager').click();
   await page.waitForTimeout(600);

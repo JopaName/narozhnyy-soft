@@ -243,7 +243,6 @@ export function bindInputs(): void {
   };
   el('btnSample').onclick = () => loadSampleHook?.();
   el('esSample').onclick = () => loadSampleHook?.();
-  el('esDraw').onclick = () => setTool('roof');
   el('btnPrint').onclick = () => window.print();
   el('btnPdf').onclick = () => {
     downloadPdf((state.project || 'КП').replace(/[^\wа-яёА-ЯЁ-]+/gi, '_') + '.pdf');

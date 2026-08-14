@@ -194,6 +194,7 @@ export function resetToEmpty(name: string): void {
   state.obstacles = [];
   state.tempRoof = [];
   state.project = name;
+  state.welcomeDismissed = true;
   R.sel = null;
   R.calib = null;
   syncInputs();
@@ -204,6 +205,29 @@ export function resetToEmpty(name: string): void {
   flushSave();
   loadBgForProject(getActiveId());
   toast('Создан: ' + name);
+}
+
+/** Старт с чистого листа: пустой проект + инструмент «Крыша» */
+export function startBlankScheme(): void {
+  if (!getActiveId()) {
+    createProject('Новый проект', {});
+    state.project = 'Новый проект';
+  }
+  state.roof = [];
+  state.panels = [];
+  state.obstacles = [];
+  state.tempRoof = [];
+  state.welcomeDismissed = true;
+  R.sel = null;
+  R.calib = null;
+  R.multi = [];
+  syncInputs();
+  computeShading();
+  refresh();
+  R.view = { s: 22, ox: 80, oy: 60 };
+  draw();
+  flushSave();
+  loadBgForProject(getActiveId());
 }
 
 export function loadSample(): void {
@@ -247,7 +271,6 @@ export function restoreActiveOrSample(): void {
   const rec = getActiveRecord();
   if (rec && Array.isArray(rec.data.roof) && (rec.data.roof as unknown[]).length >= 3) {
     openProjectRecord(rec.id);
-  } else {
-    loadSample();
   }
+  /* Пустой проект или нет проектов: экран приветствия на пустом холсте */
 }

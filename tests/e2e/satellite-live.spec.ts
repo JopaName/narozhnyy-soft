@@ -6,6 +6,8 @@ test('реальный спутник: Геленджик, ул. Десантн�
   await page.evaluate(() => localStorage.clear());
   await page.goto('http://localhost:5173');
   await page.waitForSelector('#toolbar', { timeout: 15000 });
+    await page.locator('#esSample').click();
+    await page.waitForTimeout(400);
 
   await page.locator('#inAddr').fill('Геленджик, ул Десантная 44б');
   await page.locator('#btnSat').click();

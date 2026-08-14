@@ -30,6 +30,7 @@ import { setupMapButtons } from './ui/map-browser';
 import { setupMobileNav } from './ui/mobile-nav';
 import { setupContextMenu } from './ui/context-menu';
 import { setupZoomControls } from './ui/zoom-controls';
+import { setupStartFlow } from './ui/start-flow';
 import { setCurrentEdges, getCurrentEdges } from './core/edge-detect';
 
 events.refresh = refresh;
@@ -68,6 +69,7 @@ async function init(): Promise<void> {
     setupMobileNav();
     setupContextMenu();
     setupZoomControls();
+    setupStartFlow();
     setOpenProjectHook(openProjectRecord);
     setLoadSampleHook(loadSample);
     setTool('select');

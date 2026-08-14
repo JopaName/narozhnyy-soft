@@ -23,6 +23,8 @@ test.describe('Проверка обновлений', () => {
 
     await page.goto('/');
     await page.waitForSelector('#toolbar', { timeout: 10000 });
+    await page.locator('#esSample').click();
+    await page.waitForTimeout(400);
     await page.waitForSelector('#update-banner', { timeout: 10000 });
 
     await expect(page.locator('#update-banner')).toBeVisible();
@@ -46,6 +48,8 @@ test.describe('Проверка обновлений', () => {
 
     await page.goto('/');
     await page.waitForSelector('#toolbar', { timeout: 10000 });
+    await page.locator('#esSample').click();
+    await page.waitForTimeout(400);
     await page.waitForTimeout(4500);
 
     const banner = page.locator('#update-banner');

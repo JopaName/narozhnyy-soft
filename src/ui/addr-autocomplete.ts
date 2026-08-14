@@ -2,7 +2,7 @@
 
 import { el } from '../core/utils';
 import { loadRegions } from '../core/offline-maps';
-import { openMapMode } from './map-browser';
+import { closeMapMode, openMapMode } from './map-browser';
 
 interface StreetItem {
   name: string;
@@ -18,7 +18,6 @@ interface StreetIndex {
 
 let indexesCache: StreetIndex[] | null = null;
 let indexesPromise: Promise<StreetIndex[]> | null = null;
-let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
 /** Загружает все street-индексы, перечисленные в regions.json */
 function loadIndexes(): Promise<StreetIndex[]> {
@@ -55,42 +54,71 @@ interface Suggestion {
   lng: number;
 }
 
-function showDropdown(items: Suggestion[]): void {
-  const dd = el('addrSuggest');
-  if (!items.length) {
-    dd.style.display = 'none';
-    return;
-  }
-  dd.innerHTML = items
-    .map(
-      (s, i) =>
-        '<div class="addr-suggest-item" data-idx="' +
-        i +
-        '" style="padding:7px 10px;font-size:12px;color:#e2e8f0;cursor:pointer;border-radius:8px">' +
-        s.text +
-        '</div>',
-    )
-    .join('');
-  dd.style.display = 'block';
-  dd.querySelectorAll('.addr-suggest-item').forEach((node) => {
-    node.addEventListener('mousedown', (e) => {
-      e.preventDefault();
-      const idx = Number((node as HTMLElement).dataset.idx);
-      pickSuggestion(items[idx]);
-    });
-  });
-}
-
-function pickSuggestion(s: Suggestion): void {
-  el<HTMLInputElement>('inAddr').value = s.text;
-  el('addrSuggest').style.display = 'none';
+function pickSuggestion(s: Suggestion, inputId: string, suggestId: string): void {
+  el<HTMLInputElement>(inputId).value = s.text;
+  el(suggestId).style.display = 'none';
   void openMapMode(s.lat, s.lng);
 }
 
-async function runSuggestions(query: string): Promise<void> {
+function bindAutocomplete(inputId: string, suggestId: string, onEscape?: () => void): void {
+  const input = el<HTMLInputElement>(inputId);
+  const dd = el(suggestId);
+  let timer: ReturnType<typeof setTimeout> | null = null;
+
+  const show = (items: Suggestion[]): void => {
+    if (!items.length) {
+      dd.style.display = 'none';
+      return;
+    }
+    dd.innerHTML = items
+      .map(
+        (s, i) =>
+          '<div class="addr-suggest-item" data-idx="' +
+          i +
+          '" style="padding:7px 10px;font-size:12px;color:#e2e8f0;cursor:pointer;border-radius:8px">' +
+          s.text +
+          '</div>',
+      )
+      .join('');
+    dd.style.display = 'block';
+    dd.querySelectorAll('.addr-suggest-item').forEach((node) => {
+      node.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        const idx = Number((node as HTMLElement).dataset.idx);
+        pickSuggestion(items[idx], inputId, suggestId);
+      });
+    });
+  };
+
+  input.addEventListener('input', () => {
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(() => {
+      timer = null;
+      void runSuggestionsFor(input.value, show);
+    }, 350);
+  });
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      dd.style.display = 'none';
+      if (onEscape) onEscape();
+    }
+    if (e.key === 'Enter') dd.style.display = 'none';
+  });
+  input.addEventListener('blur', () => {
+    setTimeout(() => {
+      dd.style.display = 'none';
+    }, 150);
+  });
+  document.addEventListener('click', (e) => {
+    const target = e.target as HTMLElement;
+    if (!input.contains(target) && !dd.contains(target)) dd.style.display = 'none';
+  });
+}
+
+async function runSuggestionsFor(query: string, show: (items: Suggestion[]) => void): Promise<void> {
   const q = normalize(query);
   if (q.length < 2) {
-    el('addrSuggest').style.display = 'none';
+    show([]);
     return;
   }
   const results: Suggestion[] = [];
@@ -127,35 +155,10 @@ async function runSuggestions(query: string): Promise<void> {
     /* нет сети — только оффлайн-подсказки */
   }
 
-  showDropdown(results.slice(0, 8));
+  show(results.slice(0, 8));
 }
 
 export function setupAddrAutocomplete(): void {
-  const input = el<HTMLInputElement>('inAddr');
-  input.setAttribute('autocomplete', 'off');
-  input.addEventListener('input', () => {
-    if (debounceTimer) clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(() => {
-      debounceTimer = null;
-      void runSuggestions(input.value);
-    }, 350);
-  });
-  input.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') {
-      el('addrSuggest').style.display = 'none';
-    }
-    if (e.key === 'Enter') {
-      el('addrSuggest').style.display = 'none';
-    }
-  });
-  input.addEventListener('blur', () => {
-    setTimeout(() => {
-      el('addrSuggest').style.display = 'none';
-    }, 150);
-  });
-  document.addEventListener('click', (e) => {
-    const dd = el('addrSuggest');
-    const target = e.target as HTMLElement;
-    if (!input.contains(target) && !dd.contains(target)) dd.style.display = 'none';
-  });
+  bindAutocomplete('inAddr', 'addrSuggest');
+  bindAutocomplete('mapSearch', 'mapSuggest', () => closeMapMode());
 }

@@ -27,6 +27,8 @@ test.describe('Оффлайн-карты', () => {
     await page.evaluate(() => localStorage.clear());
     await page.goto('/');
     await page.waitForSelector('#toolbar', { timeout: 15000 });
+    await page.locator('#esSample').click();
+    await page.waitForTimeout(400);
   });
 
   test('режим карты открывается и закрывается Esc', async ({ page }) => {

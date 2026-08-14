@@ -6,6 +6,8 @@ test.describe('Схема: ряд, превью, групповое выделе
     await page.evaluate(() => localStorage.clear());
     await page.goto('/');
     await page.waitForSelector('#toolbar', { timeout: 15000 });
+    await page.locator('#esSample').click();
+    await page.waitForTimeout(400);
     /* sample: крыша + панели уже есть */
   });
 

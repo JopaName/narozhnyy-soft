@@ -6,6 +6,8 @@ test.describe('Детальная смета (BOM)', () => {
     await page.evaluate(() => localStorage.clear());
     await page.goto('/');
     await page.waitForSelector('#toolbar', { timeout: 15000 });
+    await page.locator('#esSample').click();
+    await page.waitForTimeout(400);
   });
 
   test('финансы: структура затрат содержит позиции сметы', async ({ page }) => {

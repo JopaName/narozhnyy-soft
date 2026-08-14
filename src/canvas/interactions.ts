@@ -1,6 +1,7 @@
 import { MAX_PANELS } from '../core/data';
 import { commit, events, R, redo, undo } from '../core/runtime';
 import { state } from '../core/state';
+import { flushSave } from '../core/projects';
 import type { Point } from '../core/types';
 import { clamp, el, nf, num0, toast } from '../core/utils';
 import { computeRowRects, orthSnap, panelDims, panelsInRect, pruneInvalid, selfIntersects, validRect, worldToLocal } from '../domain/geometry';
@@ -102,6 +103,7 @@ export function closeRoof(): void {
   state.tempRoof = [];
   setTool('select');
   commit();
+  flushSave();
   events.refresh();
   draw();
   toast('Контур крыши создан — жмите «Автораскладка» ⚡');
@@ -480,6 +482,7 @@ function handleUp(e: PointerEvent): void {
   }
   R.drag = null;
   commit();
+  flushSave();
   events.refresh();
   draw();
 }

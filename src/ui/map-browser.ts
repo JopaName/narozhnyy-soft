@@ -77,6 +77,7 @@ export async function openMapMode(lat: number, lng: number): Promise<void> {
   R.view.ox = W / 2 - m.x * R.view.s;
   R.view.oy = H / 2 - m.y * R.view.s;
   el('btnMapUse').style.display = 'flex';
+  el('mapSearchWrap').style.display = 'block';
   el('stTool').textContent = 'Карта';
   el('stHint').textContent = 'тяните — панорама, колесо/два пальца — зум; 📌 — использовать место как фон';
   if (!region) toast('Для этой зоны нет оффлайн-карты — скачайте пакет региона');
@@ -88,6 +89,8 @@ export function closeMapMode(): void {
   lastMapCenter = { ...R.mapMode };
   R.mapMode = null;
   el('btnMapUse').style.display = 'none';
+  el('mapSearchWrap').style.display = 'none';
+  el('mapSuggest').style.display = 'none';
   events.draw();
 }
 
